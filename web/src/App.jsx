@@ -678,9 +678,17 @@ function App() {
     <div className="app-container">
       {/* Sidebar de Navegação Lateral */}
       <aside className="sidebar">
-        <div className="logo">
-          <Box size={28} />
-          <span>ITAM Avanço</span>
+        <div className="logo" onClick={() => setActiveTab('dashboard')}>
+          <svg width="34" height="32" viewBox="0 0 50 45" style={{ display: 'block', flexShrink: 0 }}>
+            {/* Orange Swoosh tilted behind/around the A */}
+            <path d="M 6,32 C 1,27 10,18 26,20 C 42,22 46,29 38,34 C 30,39 11,37 6,32 Z" fill="#F2A81E" />
+            {/* White Stylized A */}
+            <path d="M 16,36 L 29,8 L 35,8 L 42,36 L 36,36 L 34,24 L 22,24 L 20,36 Z M 24,19 L 32,19 L 28,11 Z" fill="#FFFFFF" />
+          </svg>
+          <span className="logo-text">
+            <span className="logo-text-white">vanço</span>
+            <span className="logo-text-yellow">S.A.</span>
+          </span>
         </div>
         <nav className="nav-links">
           <div 
