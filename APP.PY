@@ -26,8 +26,11 @@ from typing import List, Optional, Any
 from datetime import datetime
 
 # --- 1. CONFIGURAÇÃO DO BANCO DE DADOS POSTGRESQL ---
-# Altere as credenciais (utilizador, palavra-passe, host, nome_do_banco)
-SQLALCHEMY_DATABASE_URL = "postgresql://postgres:30209713@localhost:5432/itam_avanco?application_name=itam_api"
+import os
+SQLALCHEMY_DATABASE_URL = os.getenv(
+    "DATABASE_URL",
+    "postgresql://postgres:30209713@localhost:5432/itam_avanco?application_name=itam_api"
+)
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
@@ -212,16 +215,31 @@ app = FastAPI(
 async def global_exception_handler(request, exc):
     logger.error(f"Erro Global: {exc}")
     logger.error(traceback.format_exc())
-    return {
-        "error": "Internal Server Error",
-        "detail": str(exc)
-    }
+    from fastapi.responses import JSONResponse
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "detail": str(exc)
+        }
+    )
 
-# Configuração de CORS
+# Configuração de CORS dinâmica para produção
+allowed_origins_str = os.getenv("ALLOWED_ORIGINS", "")
+if allowed_origins_str:
+    allowed_origins = [origin.strip() for origin in allowed_origins_str.split(",") if origin.strip()]
+else:
+    allowed_origins = ["*"]
+
+# Se a origem for curinga ("*"), desativamos credentials para cumprir com especificações de CORS
+allow_credentials = True
+if "*" in allowed_origins:
+    allow_credentials = False
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # Em produção, colocar o domínio do front-end
-    allow_credentials=True,
+    allow_origins=allowed_origins,
+    allow_credentials=allow_credentials,
     allow_methods=["*"],
     allow_headers=["*"],
 )
