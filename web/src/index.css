@@ -43,19 +43,20 @@ body {
 .logo {
   display: flex;
   align-items: center;
-  gap: 0.15rem; /* Gap mínimo para juntar o 'A' ícone com 'vanço' */
+  gap: 0.2rem;
   cursor: pointer;
   user-select: none;
 }
 
 .logo-text {
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
-  font-size: 1.6rem;
+  font-family: 'Outfit', 'Inter', system-ui, -apple-system, sans-serif;
+  font-size: 1.85rem;
   font-weight: 700;
-  letter-spacing: -0.04em;
+  letter-spacing: -0.03em;
   display: flex;
   align-items: baseline;
   line-height: 1;
+  transform: translateY(1.5px); /* Ajuste microscópico para alinhar com o ícone */
 }
 
 .logo-text-white {
@@ -64,10 +65,12 @@ body {
 
 .logo-text-yellow {
   color: #F2A81E;
-  font-size: 0.9rem;
-  margin-left: 0.2rem;
+  font-size: 0.72rem;
+  margin-left: 0.4rem;
   font-weight: 800;
   align-self: flex-end;
+  transform: translateY(-2px); /* Eleva o 'S. A.' ligeiramente */
+  letter-spacing: 0.05em;
 }
 
 .nav-links {
