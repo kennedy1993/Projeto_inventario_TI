@@ -23,6 +23,15 @@ def obter_dados_completos_banco():
     Carrega TODOS os registros do banco de dados (Ativos, Colaboradores, Setores, Empresas)
     e formata-os de maneira estruturada e compacta para alimentar a IA com 100% da verdade dos dados.
     """
+    def c(val):
+        """Auxiliar para limpar e encurtar valores na serialização"""
+        if val is None:
+            return ""
+        s = str(val).strip()
+        if s.upper() in ["N/A", "NONE", "NULL", "SEM ATRIBUIÇÃO", "DISPONÍVEL EM ESTOQUE"]:
+            return ""
+        return s
+
     try:
         from APP import SessionLocal, Ativo, Colaborador, Setor, Empresa
         db = SessionLocal()
@@ -49,34 +58,39 @@ def obter_dados_completos_banco():
             # Soma dos valores
             soma_valor = sum(float(a.valor) for a in ativos if a.valor is not None)
             
-            # 3. Formata Empresas e Setores
+            # 3. Formata Empresas e Setores (Formato Compacto)
             empresas_map = {e.id: e.nome for e in empresas}
-            lista_setores = []
+            lista_setores = ["ID|SETOR|EMPRESA"]
             for s in setores:
-                emp_nome = empresas_map.get(s.empresa_id, "N/A")
-                lista_setores.append(f"Setor ID {s.id}: {s.nome} (Empresa: {emp_nome})")
+                emp_nome = empresas_map.get(s.empresa_id, "")
+                lista_setores.append(f"{s.id}|{c(s.nome)}|{c(emp_nome)}")
             setores_str = "\n".join(lista_setores)
             
-            # 4. Formata Colaboradores
-            lista_colabs = []
-            for c in colaboradores:
-                setor_nome = c.setor.nome if c.setor else "N/A"
+            # 4. Formata Colaboradores (Formato Compacto)
+            lista_colabs = ["ID|NOME|EMAIL|STATUS|SETOR"]
+            for colab in colaboradores:
+                setor_nome = colab.setor.nome if colab.setor else ""
                 lista_colabs.append(
-                    f"Colaborador ID {c.id}: {c.nome} | E-mail: {c.email_corporativo or 'N/A'} | "
-                    f"Status: {c.status} | Setor: {setor_nome}"
+                    f"{colab.id}|{c(colab.nome)}|{c(colab.email_corporativo)}|{c(colab.status)}|{c(setor_nome)}"
                 )
             colabs_str = "\n".join(lista_colabs)
             
-            # 5. Formata Ativos
-            lista_ativos = []
+            # 5. Formata Ativos (Formato Compacto)
+            lista_ativos = ["TAG|TIPO|MARCA|MODELO|STATUS|RESPONSÁVEL|LOCAL|VALOR|WIN|OFFICE|SPECS"]
             for a in ativos:
-                colab_nome = a.colaborador.nome if a.colaborador else "Disponível em Estoque"
-                valor_f = f"R$ {float(a.valor):,.2f}" if a.valor is not None else "N/A"
+                colab_nome = a.colaborador.nome if a.colaborador else ""
+                valor_f = ""
+                if a.valor is not None:
+                    try:
+                        val_float = float(a.valor)
+                        valor_f = f"{val_float:.2f}" if val_float % 1 != 0 else f"{int(val_float)}"
+                    except:
+                        valor_f = str(a.valor)
+                
                 lista_ativos.append(
-                    f"TAG: {a.tag_patrimonio} | Tipo: {a.tipo or 'N/A'} | Marca: {a.marca or 'N/A'} | "
-                    f"Modelo: {a.modelo or 'N/A'} | Status: {a.status or 'N/A'} | Responsável: {colab_nome} | "
-                    f"Local: {a.local_fisico or 'N/A'} | Valor: {valor_f} | Win: {a.licenca_windows or 'N/A'} | "
-                    f"Office: {a.licenca_office or 'N/A'} | Specs: {a.especificacoes or 'N/A'}"
+                    f"{c(a.tag_patrimonio)}|{c(a.tipo)}|{c(a.marca)}|{c(a.modelo)}|{c(a.status)}|"
+                    f"{c(colab_nome)}|{c(a.local_fisico)}|{valor_f}|{c(a.licenca_windows)}|"
+                    f"{c(a.licenca_office)}|{c(a.especificacoes)}"
                 )
             ativos_str = "\n".join(lista_ativos)
             
@@ -119,7 +133,8 @@ async def conversar_com_groq(request: ChatRequest):
             "2. CONCISÃO EXTREMA: Forneça a resposta mais enxuta possível. Use listas em tópicos (bullet points) ou tabelas curtas in Markdown. Remova qualquer palavra, frase ou preâmbulo que não adicione valor informativo direto.\n"
             "3. TOM TÉCNICO E SECO: Fale em Português do Brasil de forma extremamente séria, factual, direta e técnica.\n"
             "4. FOCO ABSOLUTO E 100% DE FIDELIDADE: Responda baseado EXCLUSIVAMENTE nos dados abaixo. Nunca invente ativos, nomes, status ou números. Se perguntarem sobre algo que não está na lista abaixo, diga secamente: 'Registro não localizado no banco de dados.'\n"
-            "5. NUNCA EXPLIQUE O SEU PROCESSO: Não diga 'Consultando o banco...', 'Com base nas estatísticas...', ou 'Aqui estão as informações...'. Apenas exiba as informações.\n\n"
+            "5. NUNCA EXPLIQUE O SEU PROCESSO: Não diga 'Consultando o banco...', 'Com base nas estatísticas...', ou 'Aqui estão as informações...'. Apenas exiba as informações.\n"
+            "6. ESTRUTURA DOS DADOS: Os dados de setores, colaboradores e ativos estão estruturados no formato delimitado por barras (|), onde a primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n\n"
             f"{contexto_completo}\n"
         )
 
