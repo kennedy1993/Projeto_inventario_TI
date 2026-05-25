@@ -680,7 +680,7 @@ function App() {
       {/* Sidebar de Navegação Lateral */}
       <aside className="sidebar">
         <div className="logo" onClick={() => setActiveTab('dashboard')}>
-          <img src={logoImg} alt="Avanço S.A." style={{ height: '36px', display: 'block', maxWidth: '100%' }} />
+          <img src={logoImg} alt="Avanço S.A." style={{ width: '100%', height: 'auto', display: 'block' }} />
         </div>
         <nav className="nav-links">
           <div 
