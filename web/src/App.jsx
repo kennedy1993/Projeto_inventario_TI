@@ -26,7 +26,9 @@ import {
   Layers,
   MapPin,
   Sparkles,
-  ChevronRight
+  ChevronRight,
+  MessageSquare,
+  Send
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -147,13 +149,75 @@ function App() {
     status: 'Ativo'
   });
 
+  // Chat IA State
+  const [isChatOpen, setIsChatOpen] = useState(false);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [chatMessages, setChatMessages] = useState([
+    {
+      id: 1,
+      sender: 'assistant',
+      text: 'Olá! Sou o Assistente de Inteligência Artificial do ITAM Avanço. Posso te ajudar a consultar equipamentos, colaboradores, status de inventário ou tirar dúvidas gerais de TI. Como posso te ajudar hoje?'
+    }
+  ]);
+
+  const messagesEndRef = React.useRef(null);
+
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  };
+
+  useEffect(() => {
+    if (isChatOpen) {
+      scrollToBottom();
+    }
+  }, [chatMessages, isChatOpen]);
+
+  const handleSendChatMessage = async (e) => {
+    e.preventDefault();
+    if (!chatInput.trim()) return;
+
+    const userMessage = chatInput;
+    setChatInput('');
+    
+    // Adiciona a mensagem do usuário
+    setChatMessages(prev => [...prev, {
+      id: Date.now(),
+      sender: 'user',
+      text: userMessage
+    }]);
+
+    setChatLoading(true);
+
+    try {
+      const res = await axios.post(`${API_BASE_URL}/api/ia/conversar`, {
+        mensagem: userMessage
+      });
+      
+      setChatMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'assistant',
+        text: res.data.resposta
+      }]);
+    } catch (error) {
+      console.error("Erro ao falar com a IA:", error);
+      setChatMessages(prev => [...prev, {
+        id: Date.now() + 1,
+        sender: 'system-error',
+        text: 'Desculpe, ocorreu um erro de conexão com o Assistente de IA. Verifique se o servidor FastAPI está ativo.'
+      }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   useEffect(() => {
     fetchData();
   }, [activeTab]);
 
   // Helper to trigger Toast Alert
   const showToast = (message, type = 'info') => {
-    const id = Date.now();
+    const id = `${Date.now()}-${Math.random()}`;
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
@@ -1575,6 +1639,63 @@ function App() {
             </div>
           ))}
         </div>
+
+        {/* --- ASSISTENTE VIRTUAL DE IA (CHAT FLUTUANTE) --- */}
+        <button 
+          className="chat-btn"
+          onClick={() => setIsChatOpen(!isChatOpen)}
+          title="Falar com Assistente de IA"
+        >
+          {isChatOpen ? <X size={24} /> : <MessageSquare size={24} />}
+        </button>
+
+        {isChatOpen && (
+          <div className="chat-window">
+            <div className="chat-header">
+              <div className="chat-header-title">
+                <Sparkles size={18} color="var(--accent)" />
+                <span>Assistente IA Avanço</span>
+              </div>
+              <button 
+                className="btn-icon"
+                onClick={() => setIsChatOpen(false)}
+                style={{padding: '0.25rem', borderRadius: '50%'}}
+              >
+                <X size={16} />
+              </button>
+            </div>
+            
+            <div className="chat-messages">
+              {chatMessages.map(msg => (
+                <div key={msg.id} className={`chat-msg ${msg.sender}`}>
+                  {msg.text}
+                </div>
+              ))}
+              
+              {chatLoading && (
+                <div className="chat-typing">
+                  <div className="dot"></div>
+                  <div className="dot"></div>
+                  <div className="dot"></div>
+                </div>
+              )}
+              <div ref={messagesEndRef} />
+            </div>
+
+            <form className="chat-input-form" onSubmit={handleSendChatMessage}>
+              <input 
+                type="text" 
+                placeholder="Pergunte-me qualquer dúvida..." 
+                value={chatInput}
+                onChange={e => setChatInput(e.target.value)}
+                disabled={chatLoading}
+              />
+              <button type="submit" disabled={chatLoading || !chatInput.trim()}>
+                <Send size={16} />
+              </button>
+            </form>
+          </div>
+        )}
       </main>
     </div>
   );

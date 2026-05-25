@@ -9,6 +9,13 @@
 # 3. Aceder à documentação automática: http://localhost:8000/docs
 # ==============================================================================
 
+# 1. No topo do arquivo, junto com os outros imports:
+from chat_service import router as chat_router
+from dotenv import load_dotenv
+
+# Carrega as variáveis do arquivo .env (garante que a GROQ_API_KEY seja lida)
+load_dotenv()
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Numeric, ForeignKey, Date, DateTime, or_
@@ -218,6 +225,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Inclui as rotas do assistente virtual de chat IA
+app.include_router(chat_router)
 
 # Dependência para obter a sessão do banco de dados
 def get_db():
