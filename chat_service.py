@@ -60,11 +60,15 @@ def obter_dados_completos_banco():
         db = SessionLocal()
         try:
             # 1. Carrega dados de forma eficiente com joins para evitar queries N+1
-            colaboradores = db.query(Colaborador).all()
+            colaboradores = db.query(Colaborador).options(joinedload(Colaborador.setor)).all()
             ativos = db.query(Ativo).options(joinedload(Ativo.colaborador).joinedload(Colaborador.setor)).all()
+            
+            # IDs de colaboradores vinculados a algum ativo
+            colabs_ativos_ids = {a.colaborador_id for a in ativos if a.colaborador_id is not None}
             
             # 2. Estatísticas Consolidadas
             total_ativos = len(ativos)
+            total_colabs = len(colaboradores)
             ativos_em_uso = sum(1 for a in ativos if a.status == "Em Uso")
             ativos_estoque = sum(1 for a in ativos if a.status == "Estoque")
             ativos_manutencao = sum(1 for a in ativos if a.status == "Manutenção")
@@ -86,7 +90,15 @@ def obter_dados_completos_banco():
                     lista_emails.append(f"{c(colab.nome)}: {c(colab.email_corporativo)}")
             emails_str = "\n".join(lista_emails)
             
-            # 4. Formata Ativos (Formato Ultra Compacto com Responsável, Setor integrados por linha)
+            # 4. Formata Colaboradores Sem Ativos (Apenas inativos para economizar espaço de tokens)
+            lista_colabs = ["NOME|SETOR"]
+            for colab in colaboradores:
+                if colab.id not in colabs_ativos_ids:
+                    setor_nome = colab.setor.nome if colab.setor else ""
+                    lista_colabs.append(f"{c(colab.nome)}|{c(setor_nome)}")
+            colabs_str = "\n".join(lista_colabs)
+            
+            # 5. Formata Ativos (Formato Ultra Compacto com Responsável, Setor integrados por linha)
             lista_ativos = ["TAG|MARCA|MODELO|STATUS|RESPONSÁVEL|SETOR"]
             for a in ativos:
                 colab_nome = a.colaborador.nome if a.colaborador else ""
@@ -101,6 +113,7 @@ def obter_dados_completos_banco():
             contexto = (
                 f"=== ESTATÍSTICAS GERAIS DO INVENTÁRIO ===\n"
                 f"- Total de Equipamentos Cadastrados: {total_ativos}\n"
+                f"- Total de Colaboradores Cadastrados: {total_colabs}\n"
                 f"- Equipamentos Em Uso: {ativos_em_uso}\n"
                 f"- Equipamentos Em Estoque: {ativos_estoque}\n"
                 f"- Equipamentos em Manutenção: {ativos_manutencao}\n"
@@ -109,6 +122,9 @@ def obter_dados_completos_banco():
                 
                 f"=== EMAILS DE CONTATO ===\n"
                 f"{emails_str}\n\n"
+                
+                f"=== COLABORADORES CADASTRADOS SEM EQUIPAMENTO ATRIBUÍDO ===\n"
+                f"{colabs_str}\n\n"
                 
                 f"=== ATIVOS / EQUIPAMENTOS ===\n"
                 f"{ativos_str}\n"
@@ -135,7 +151,7 @@ async def conversar_com_groq(request: ChatRequest):
             "3. TOM TÉCNICO E SECO: Fale em Português do Brasil de forma extremamente séria, factual, direta e técnica.\n"
             "4. FOCO ABSOLUTO E 100% DE FIDELIDADE: Responda baseado EXCLUSIVAMENTE nos dados abaixo. Nunca invente ativos, nomes, status ou números. Se perguntarem sobre algo que não está na lista abaixo, diga secamente: 'Registro não localizado no banco de dados.'\n"
             "5. NUNCA EXPLIQUE O SEU PROCESSO: Não diga 'Consultando o banco...', 'Com base nas estatísticas...', ou 'Aqui estão as informações...'. Apenas exiba as informações.\n"
-            "6. ESTRUTURA DOS DADOS: Os dados de ativos estão em uma tabela delimitada por barras (|), contendo a TAG, marca, modelo, status, responsável e setor. A primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n"
+            "6. ESTRUTURA DOS DADOS: Os dados de colaboradores (tabela contendo nome e setor) e de ativos (tabela contendo TAG, marca, modelo, status, responsável e setor) estão em tabelas separadas delimitadas por barras (|). A primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n"
             "7. DICIONÁRIO DE ABREVIAÇÕES: Para interpretar as tags e dados, considere: as tags começam com a categoria do ativo (NTB=Notebook, MON=Monitor, CEL=Celular); marcas LNV=Lenovo, SAM=Samsung, PHL=Philips, ITB=Intelbras; status Uso=Em Uso, Est=Estoque, Man=Manutenção.\n\n"
             f"{contexto_completo}\n"
         )
