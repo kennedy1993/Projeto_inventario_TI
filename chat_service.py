@@ -3,6 +3,7 @@ from pydantic import BaseModel
 from groq import Groq
 import os
 from dotenv import load_dotenv
+from sqlalchemy.orm import joinedload
 
 # Garante o carregamento das variáveis do arquivo .env antes de inicializar o cliente Groq
 load_dotenv()
@@ -17,241 +18,110 @@ client = Groq(api_key=os.getenv("GROQ_API_KEY"))
 class ChatRequest(BaseModel):
     mensagem: str
 
-def obter_contexto_inventario():
+def obter_dados_completos_banco():
     """
-    Busca estatísticas gerais no banco de dados para alimentar o prompt do sistema da IA.
-    Usa importações dinâmicas para evitar imports circulares com o APP.py.
+    Carrega TODOS os registros do banco de dados (Ativos, Colaboradores, Setores, Empresas)
+    e formata-os de maneira estruturada e compacta para alimentar a IA com 100% da verdade dos dados.
     """
     try:
-        from APP import SessionLocal, Ativo, Colaborador, Setor
+        from APP import SessionLocal, Ativo, Colaborador, Setor, Empresa
         db = SessionLocal()
         try:
-            total_ativos = db.query(Ativo).count()
-            ativos_em_uso = db.query(Ativo).filter(Ativo.status == "Em Uso").count()
-            ativos_estoque = db.query(Ativo).filter(Ativo.status == "Estoque").count()
-            ativos_manutencao = db.query(Ativo).filter(Ativo.status == "Manutenção").count()
+            # 1. Carrega todas as tabelas com joins adequados para evitar N+1 queries
+            empresas = db.query(Empresa).all()
+            setores = db.query(Setor).options(joinedload(Setor.empresa)).all()
+            colaboradores = db.query(Colaborador).options(joinedload(Colaborador.setor)).all()
+            ativos = db.query(Ativo).options(joinedload(Ativo.colaborador)).all()
             
-            setores = db.query(Setor).all()
-            colaboradores = db.query(Colaborador).all()
+            # 2. Estatísticas Consolidadas
+            total_ativos = len(ativos)
+            ativos_em_uso = sum(1 for a in ativos if a.status == "Em Uso")
+            ativos_estoque = sum(1 for a in ativos if a.status == "Estoque")
+            ativos_manutencao = sum(1 for a in ativos if a.status == "Manutenção")
             
-            lista_setores = [s.nome for s in setores]
-            lista_colaboradores = [c.nome for c in colaboradores[:20]]  # Limita para não estourar tokens
-            
-            # Contagem de tipos de equipamentos cadastrados
-            tipos_raw = db.query(Ativo.tipo).all()
+            # Contagem de tipos
             tipos_dict = {}
-            for t in tipos_raw:
-                tipo_str = t[0] or "OUTROS"
+            for a in ativos:
+                tipo_str = a.tipo or "OUTROS"
                 tipos_dict[tipo_str] = tipos_dict.get(tipo_str, 0) + 1
             contagem_tipos = ", ".join([f"{k}: {v}" for k, v in tipos_dict.items()])
             
-            # Calcular o valor total dos ativos no banco
-            valor_total_raw = db.query(Ativo.valor).all()
-            soma_valor = sum([float(v[0]) for v in valor_total_raw if v[0] is not None])
+            # Soma dos valores
+            soma_valor = sum(float(a.valor) for a in ativos if a.valor is not None)
+            
+            # 3. Formata Empresas e Setores
+            empresas_map = {e.id: e.nome for e in empresas}
+            lista_setores = []
+            for s in setores:
+                emp_nome = empresas_map.get(s.empresa_id, "N/A")
+                lista_setores.append(f"Setor ID {s.id}: {s.nome} (Empresa: {emp_nome})")
+            setores_str = "\n".join(lista_setores)
+            
+            # 4. Formata Colaboradores
+            lista_colabs = []
+            for c in colaboradores:
+                setor_nome = c.setor.nome if c.setor else "N/A"
+                lista_colabs.append(
+                    f"Colaborador ID {c.id}: {c.nome} | E-mail: {c.email_corporativo or 'N/A'} | "
+                    f"Status: {c.status} | Setor: {setor_nome}"
+                )
+            colabs_str = "\n".join(lista_colabs)
+            
+            # 5. Formata Ativos
+            lista_ativos = []
+            for a in ativos:
+                colab_nome = a.colaborador.nome if a.colaborador else "Disponível em Estoque"
+                valor_f = f"R$ {float(a.valor):,.2f}" if a.valor is not None else "N/A"
+                lista_ativos.append(
+                    f"TAG: {a.tag_patrimonio} | Tipo: {a.tipo or 'N/A'} | Marca: {a.marca or 'N/A'} | "
+                    f"Modelo: {a.modelo or 'N/A'} | Status: {a.status or 'N/A'} | Responsável: {colab_nome} | "
+                    f"Local: {a.local_fisico or 'N/A'} | Valor: {valor_f} | Win: {a.licenca_windows or 'N/A'} | "
+                    f"Office: {a.licenca_office or 'N/A'} | Specs: {a.especificacoes or 'N/A'}"
+                )
+            ativos_str = "\n".join(lista_ativos)
             
             contexto = (
-                f"=== INVENTÁRIO EM TEMPO REAL (Estatísticas Atuais) ===\n"
+                f"=== ESTATÍSTICAS GERAIS DO INVENTÁRIO ===\n"
                 f"- Total de Equipamentos Cadastrados: {total_ativos}\n"
                 f"- Equipamentos Em Uso: {ativos_em_uso}\n"
-                f"- Equipamentos Em Estoque (Disponíveis): {ativos_estoque}\n"
+                f"- Equipamentos Em Estoque: {ativos_estoque}\n"
                 f"- Equipamentos em Manutenção: {ativos_manutencao}\n"
                 f"- Equipamentos por Categoria: {contagem_tipos}\n"
-                f"- Valor Total do Inventário: R$ {soma_valor:,.2f}\n"
-                f"- Setores da Empresa Avanço: {', '.join(lista_setores)}\n"
-                f"- Alguns Colaboradores: {', '.join(lista_colaboradores)}\n"
-                f"Use estes números reais sempre que o usuário perguntar sobre estatísticas gerais."
+                f"- Valor Total do Inventário: R$ {soma_valor:,.2f}\n\n"
+                
+                f"=== SETORES E DEPARTAMENTOS ===\n"
+                f"{setores_str}\n\n"
+                
+                f"=== CADASTRO COMPLETO DE COLABORADORES ===\n"
+                f"{colabs_str}\n\n"
+                
+                f"=== CADASTRO COMPLETO DE ATIVOS / EQUIPAMENTOS ===\n"
+                f"{ativos_str}\n"
             )
             return contexto
+            
         finally:
             db.close()
     except Exception as e:
-        return f"Não foi possível obter dados consolidados do inventário: {str(e)}"
-
-def buscar_dados_extras(mensagem: str):
-    """
-    Varre a mensagem enviada pelo usuário procurando por termos-chave específicos,
-    como categorias, marcas, status, setores, colaboradores ou tags, e realiza
-    consultas cruzadas e inteligentes no banco de dados.
-    """
-    try:
-        from APP import SessionLocal, Ativo, Colaborador, Setor
-        db = SessionLocal()
-        try:
-            resultados = []
-            mensagem_lc = mensagem.lower().strip()
-            
-            # 1. Identificar se o usuário está pedindo por um TIPO específico de equipamento
-            tipos_mapeados = {
-                "notebook": "NOTEBOOK", "notebooks": "NOTEBOOK", "laptop": "NOTEBOOK", "laptops": "NOTEBOOK",
-                "monitor": "MONITOR", "monitores": "MONITOR", "tela": "MONITOR", "telas": "MONITOR",
-                "celular": "CELULAR", "celulares": "CELULAR", "telefone": "CELULAR", "telefones": "CELULAR",
-                "smartphone": "CELULAR", "smartphones": "CELULAR",
-                "mouse": "MOUSE", "teclado": "TECLADO", "impressora": "IMPRESSORA"
-            }
-            
-            tipo_encontrado = None
-            for key, val in tipos_mapeados.items():
-                if key in mensagem_lc:
-                    tipo_encontrado = val
-                    break
-            
-            # 2. Identificar se o usuário está filtrando por STATUS
-            status_mapeados = {
-                "estoque": "Estoque", "disponivel": "Estoque", "disponíveis": "Estoque", "estoques": "Estoque",
-                "uso": "Em Uso", "utilizando": "Em Uso", "em uso": "Em Uso",
-                "manutencao": "Manutenção", "manutenção": "Manutenção", "quebrado": "Manutenção", "conserto": "Manutenção",
-                "descartado": "Descartado", "lixo": "Descartado"
-            }
-            
-            status_encontrado = None
-            for key, val in status_mapeados.items():
-                if key in mensagem_lc:
-                    status_encontrado = val
-                    break
-
-            # 3. Se identificamos TIPO ou STATUS (ou ambos), fazemos uma busca avançada nos ativos
-            if tipo_encontrado or status_encontrado:
-                query = db.query(Ativo)
-                desc_filtros = []
-                if tipo_encontrado:
-                    query = query.filter(Ativo.tipo == tipo_encontrado)
-                    desc_filtros.append(f"Tipo: {tipo_encontrado}")
-                if status_encontrado:
-                    query = query.filter(Ativo.status == status_encontrado)
-                    desc_filtros.append(f"Status: {status_encontrado}")
-                
-                ativos_filtrados = query.all()
-                if ativos_filtrados:
-                    linhas = []
-                    for a in ativos_filtrados[:35]:  # Limita a 35 itens para não estourar contexto
-                        resp = a.colaborador.nome if a.colaborador else "Disponível em Estoque"
-                        linhas.append(
-                            f"- TAG {a.tag_patrimonio} | {a.marca} {a.modelo} | Status: {a.status} | "
-                            f"Responsável: {resp} | Local: {a.local_fisico} | Valor: R$ {float(a.valor or 0):,.2f}"
-                        )
-                    
-                    filtros_str = " e ".join(desc_filtros)
-                    resultados.append(
-                        f"[Ativos Filtrados ({filtros_str}) - Total Encontrado: {len(ativos_filtrados)}]\n" + "\n".join(linhas)
-                    )
-
-            # 4. Busca por termos específicos: marcas, colaboradores, setores e tags específicas
-            palavras = mensagem.split()
-            termos_busca = [p.strip(",.!?\"'();:-") for p in palavras if len(p.strip(",.!?\"'();:-")) >= 3]
-            
-            palavras_ignoradas = {
-                "com", "para", "quem", "esta", "está", "onde", "setor", "marca", "modelo", 
-                "tag", "ativo", "ativos", "quais", "temos", "sistema", "empresa", "avanco", 
-                "avanço", "lista", "listar", "mostrar", "todos", "tudo"
-            }
-            
-            for termo in termos_busca:
-                termo_lower = termo.lower()
-                if termo_lower in palavras_ignoradas:
-                    continue
-                
-                # A. Buscar por Setor (Engenharia, Financeiro, etc.)
-                setores = db.query(Setor).filter(Setor.nome.ilike(f"%{termo}%")).all()
-                for setor in setores:
-                    # Encontrar todos os ativos cujos colaboradores pertencem a este setor
-                    ativos_setor = db.query(Ativo).join(Ativo.colaborador).filter(Colaborador.setor_id == setor.id).all()
-                    colabs_setor = db.query(Colaborador).filter(Colaborador.setor_id == setor.id).all()
-                    
-                    info_colabs = [f"{c.nome} ({c.status})" for c in colabs_setor]
-                    info_ativos = [f"TAG {a.tag_patrimonio} ({a.tipo} - {a.marca} {a.modelo})" for a in ativos_setor]
-                    
-                    resultados.append(
-                        f"[Setor Encontrado] Nome: {setor.nome}\n"
-                        f"- Colaboradores neste setor: {', '.join(info_colabs) if info_colabs else 'Nenhum'}\n"
-                        f"- Equipamentos atribuídos a este setor: {', '.join(info_ativos) if info_ativos else 'Nenhum'}"
-                    )
-                
-                # B. Buscar por Marcas (Dell, Lenovo, Samsung, HP, etc.)
-                marcas_comuns = {"dell", "lenovo", "hp", "samsung", "apple", "lg", "positivo", "acer", "asus"}
-                if termo_lower in marcas_comuns:
-                    ativos_marca = db.query(Ativo).filter(Ativo.marca.ilike(f"%{termo}%")).all()
-                    if ativos_marca:
-                        linhas_marca = []
-                        for a in ativos_marca[:15]:
-                            resp = a.colaborador.nome if a.colaborador else "Disponível em Estoque"
-                            linhas_marca.append(f"- TAG {a.tag_patrimonio} ({a.tipo}) | {a.modelo} | Status: {a.status} | Responsável: {resp}")
-                        resultados.append(
-                            f"[Equipamentos da Marca: {termo.upper()} - Total: {len(ativos_marca)}]\n" + "\n".join(linhas_marca)
-                        )
-                
-                # C. Buscar por TAG de Patrimônio específica
-                ativos_tag = db.query(Ativo).filter(Ativo.tag_patrimonio.ilike(f"%{termo}%")).all()
-                for ativo in ativos_tag:
-                    responsavel = ativo.colaborador.nome if ativo.colaborador else "Disponível em Estoque"
-                    resultados.append(
-                        f"[Equipamento por TAG] TAG: {ativo.tag_patrimonio} | Tipo: {ativo.tipo} | "
-                        f"Marca/Modelo: {ativo.marca} {ativo.modelo} | Status: {ativo.status} | "
-                        f"Responsável: {responsavel} | Local: {ativo.local_fisico} | "
-                        f"Especificações: {ativo.especificacoes or 'N/A'} | "
-                        f"Licenças: Windows {ativo.licenca_windows or 'N/A'} / Office {ativo.licenca_office or 'N/A'} | "
-                        f"Valor: R$ {float(ativo.valor or 0):,.2f}"
-                    )
-                
-                # D. Buscar por nome de Colaborador
-                colaboradores = db.query(Colaborador).filter(Colaborador.nome.ilike(f"%{termo}%")).all()
-                for colab in colaboradores:
-                    ativos_colab = db.query(Ativo).filter(Ativo.colaborador_id == colab.id).all()
-                    tags_colab = [f"TAG {a.tag_patrimonio} ({a.tipo} {a.marca} {a.modelo})" for a in ativos_colab]
-                    ativos_desc = f"{', '.join(tags_colab)}" if tags_colab else "Nenhum equipamento atribuído no momento"
-                    
-                    resultados.append(
-                        f"[Cadastro do Colaborador] Nome: {colab.nome} | E-mail: {colab.email_corporativo or 'N/A'} | "
-                        f"Setor: {colab.setor.nome if colab.setor else 'N/A'} | Status: {colab.status}\n"
-                        f"- Equipamentos atribuídos: {ativos_desc}"
-                    )
-
-            # Remover duplicados mantendo a ordem
-            resultados_unicos = []
-            for r in resultados:
-                if r not in resultados_unicos:
-                    resultados_unicos.append(r)
-            
-            if resultados_unicos:
-                return "\n\n=== DADOS REAIS EXTRAÍDOS DO BANCO DE DADOS EM TEMPO REAL ===\n" + "\n\n".join(resultados_unicos)
-            return None
-        finally:
-            db.close()
-    except Exception as e:
-        return f"Erro na consulta de dados de suporte: {str(e)}"
+        return f"Não foi possível obter dados completos do inventário: {str(e)}"
 
 @router.post("/conversar")
 async def conversar_com_groq(request: ChatRequest):
     try:
-        # Carrega o contexto estático/consolidado do sistema
-        contexto_inventario = obter_contexto_inventario()
+        # Carrega a base inteira em tempo real antes de enviar para a IA
+        contexto_completo = obter_dados_completos_banco()
         
-        # Busca por termos específicos na mensagem do usuário
-        contexto_busca = buscar_dados_extras(request.mensagem)
-        
-        # Cria o prompt do sistema informando a IA sobre o seu papel e os dados consolidados
+        # Cria o prompt do sistema altamente otimizado por engenharia de prompts para máxima concisão e objetividade
         system_prompt = (
-            "Você é o Assistente Virtual Sênior e Especialista de Inventário de TI (ITAM) da Avanço Construções.\n"
-            "Seu comportamento deve seguir rigorosamente as seguintes diretrizes:\n"
-            "1. OBJETIVIDADE MÁXIMA: Vá direto ao ponto. Evite rodeios, introduções longas ou saudações excessivas. Forneça respostas limpas, focadas e diretas.\n"
-            "2. PROFISSIONALISMO: Comporte-se como um assistente corporativo técnico e sério. Fale em Português do Brasil de forma clara e impecável.\n"
-            "3. FOCO EXCLUSIVO: Responda APENAS a dúvidas e consultas relacionadas ao inventário da empresa Avanço (ativos, tags, marcas, modelos, colaboradores, licenças e setores). Se o usuário perguntar sobre assuntos completamente alheios ao sistema ou ao inventário, recuse educadamente de forma objetiva.\n"
-            "4. APRESENTAÇÃO DE DADOS: Sempre que retornar listas ou informações técnicas de equipamentos, formate em tópicos curtos ou tabelas simples para facilitar a leitura rápida.\n\n"
-            f"{contexto_inventario}\n\n"
+            "Você é o Assistente Virtual Especialista de Inventário de TI (ITAM) da Avanço Construções.\n"
+            "Diretrizes RÍGIDAS de comportamento (Engenharia de Prompt):\n"
+            "1. OBJETIVIDADE CRÍTICA: Não faça rodeios, introduções, saudações (como 'Olá', 'Bom dia', 'Tudo bem?'), nem encerramentos cordiais (como 'Espero ter ajudado' ou 'Estou à disposição'). Inicie a resposta diretamente com o dado ou informação solicitada.\n"
+            "2. CONCISÃO EXTREMA: Forneça a resposta mais enxuta possível. Use listas em tópicos (bullet points) ou tabelas curtas in Markdown. Remova qualquer palavra, frase ou preâmbulo que não adicione valor informativo direto.\n"
+            "3. TOM TÉCNICO E SECO: Fale em Português do Brasil de forma extremamente séria, factual, direta e técnica.\n"
+            "4. FOCO ABSOLUTO E 100% DE FIDELIDADE: Responda baseado EXCLUSIVAMENTE nos dados abaixo. Nunca invente ativos, nomes, status ou números. Se perguntarem sobre algo que não está na lista abaixo, diga secamente: 'Registro não localizado no banco de dados.'\n"
+            "5. NUNCA EXPLIQUE O SEU PROCESSO: Não diga 'Consultando o banco...', 'Com base nas estatísticas...', ou 'Aqui estão as informações...'. Apenas exiba as informações.\n\n"
+            f"{contexto_completo}\n"
         )
-        
-        # Se encontrou dados específicos sobre ativos/colaboradores que o usuário perguntou, insere no prompt
-        if contexto_busca:
-            system_prompt += (
-                "ATENÇÃO: O usuário fez uma pergunta sobre um ativo ou colaborador específico. "
-                "Para ajudá-lo de forma cirúrgica e precisa, foram extraídos estes registros reais do banco PostgreSQL:\n"
-                f"{contexto_busca}\n"
-                "Formule sua resposta com base estritamente nesses dados reais, indicando os status, marcas, nomes e setores correspondentes de maneira extremamente profissional e sem adivinhações."
-            )
-        else:
-            system_prompt += (
-                "Instrução: Caso o usuário tenha perguntado sobre um colaborador ou TAG específica que não está no resumo inicial, diga de forma direta "
-                "que não localizou o registro no banco de dados e oriente-o a informar a TAG exata ou o nome completo do colaborador para consulta."
-            )
 
         # Chamada para a API da Groq utilizando o modelo LLaMA 3.3 70B
         completion = client.chat.completions.create(
@@ -266,8 +136,8 @@ async def conversar_com_groq(request: ChatRequest):
                     "content": request.mensagem
                 }
             ],
-            temperature=0.6,  # Temperatura ligeiramente menor para manter a IA mais factual e precisa
-            max_tokens=1024,
+            temperature=0.0,  # Temperatura ZERO garante que o modelo seja absolutamente determinístico e use apenas os fatos informados
+            max_tokens=1500,  # Espaço suficiente para listas grandes se necessário
         )
 
         # Extrai o texto da resposta da IA
