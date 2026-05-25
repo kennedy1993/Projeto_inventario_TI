@@ -32,7 +32,28 @@ def obter_dados_completos_banco():
         s = s.replace("\uFFFD", "")  # Remove caractere de substituição Unicode corrompido
         if s.upper() in ["N/A", "NONE", "NULL", "SEM ATRIBUIÇÃO", "DISPONÍVEL EM ESTOQUE"]:
             return ""
-        return s
+        
+        # Abreviações inteligentes para economizar precioso espaço de tokens
+        abrev = {
+            "NOTEBOOK": "NTB",
+            "MONITOR": "MON",
+            "CELULAR": "CEL",
+            "LENOVO": "LNV",
+            "HEWLETT-PACKARD": "HP",
+            "SAMSUNGBOOK": "SAM",
+            "SAMSUNG": "SAM",
+            "MOTOROLA": "MOT",
+            "PHILIPS": "PHL",
+            "INTELBRAS": "ITB",
+            "Em Uso": "Uso",
+            "Estoque": "Est",
+            "Manutenção": "Man",
+            "Escritório Avanço": "Escritório",
+            "Sede Central": "Sede",
+            "AVANÇO CONSTRUÇÕES": "Avanço",
+            "Avanço Construções": "Avanço",
+        }
+        return abrev.get(s, s)
 
     try:
         from APP import SessionLocal, Ativo, Colaborador, Setor, Empresa
@@ -65,24 +86,15 @@ def obter_dados_completos_banco():
                     lista_emails.append(f"{c(colab.nome)}: {c(colab.email_corporativo)}")
             emails_str = "\n".join(lista_emails)
             
-            # 4. Formata Ativos (Formato Compacto com Responsável e Setor integrados por linha)
-            lista_ativos = ["TAG|TIPO|MARCA|MODELO|STATUS|RESPONSÁVEL|SETOR|LOCAL|VALOR|WIN|OFFICE|SPECS"]
+            # 4. Formata Ativos (Formato Ultra Compacto com Responsável, Setor integrados por linha)
+            lista_ativos = ["TAG|MARCA|MODELO|STATUS|RESPONSÁVEL|SETOR"]
             for a in ativos:
                 colab_nome = a.colaborador.nome if a.colaborador else ""
                 setor_nome = a.colaborador.setor.nome if (a.colaborador and a.colaborador.setor) else ""
                 
-                valor_f = ""
-                if a.valor is not None:
-                    try:
-                        val_float = float(a.valor)
-                        valor_f = f"{val_float:.2f}" if val_float % 1 != 0 else f"{int(val_float)}"
-                    except:
-                        valor_f = str(a.valor)
-                
                 lista_ativos.append(
-                    f"{c(a.tag_patrimonio)}|{c(a.tipo)}|{c(a.marca)}|{c(a.modelo)}|{c(a.status)}|"
-                    f"{c(colab_nome)}|{c(setor_nome)}|{c(a.local_fisico)}|{valor_f}|{c(a.licenca_windows)}|"
-                    f"{c(a.licenca_office)}|{c(a.especificacoes)}"
+                    f"{c(a.tag_patrimonio)}|{c(a.marca)}|{c(a.modelo)}|{c(a.status)}|"
+                    f"{c(colab_nome)}|{c(setor_nome)}"
                 )
             ativos_str = "\n".join(lista_ativos)
             
@@ -123,13 +135,14 @@ async def conversar_com_groq(request: ChatRequest):
             "3. TOM TÉCNICO E SECO: Fale em Português do Brasil de forma extremamente séria, factual, direta e técnica.\n"
             "4. FOCO ABSOLUTO E 100% DE FIDELIDADE: Responda baseado EXCLUSIVAMENTE nos dados abaixo. Nunca invente ativos, nomes, status ou números. Se perguntarem sobre algo que não está na lista abaixo, diga secamente: 'Registro não localizado no banco de dados.'\n"
             "5. NUNCA EXPLIQUE O SEU PROCESSO: Não diga 'Consultando o banco...', 'Com base nas estatísticas...', ou 'Aqui estão as informações...'. Apenas exiba as informações.\n"
-            "6. ESTRUTURA DOS DADOS: Os dados de ativos estão estruturados em uma única tabela no formato delimitado por barras (|), contendo o responsável e seu respectivo setor diretamente em cada linha, onde a primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n\n"
+            "6. ESTRUTURA DOS DADOS: Os dados de ativos estão em uma tabela delimitada por barras (|), contendo a TAG, marca, modelo, status, responsável e setor. A primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n"
+            "7. DICIONÁRIO DE ABREVIAÇÕES: Para interpretar as tags e dados, considere: as tags começam com a categoria do ativo (NTB=Notebook, MON=Monitor, CEL=Celular); marcas LNV=Lenovo, SAM=Samsung, PHL=Philips, ITB=Intelbras; status Uso=Em Uso, Est=Estoque, Man=Manutenção.\n\n"
             f"{contexto_completo}\n"
         )
 
-        # Chamada para a API da Groq utilizando o modelo LLaMA 3.3 70B
+        # Chamada para a API da Groq utilizando o modelo LLaMA 3.1 8B (Ideal para alta velocidade e cota de uso estável)
         completion = client.chat.completions.create(
-            model="llama-3.3-70b-versatile",
+            model="llama-3.1-8b-instant",
             messages=[
                 {
                     "role": "system",
