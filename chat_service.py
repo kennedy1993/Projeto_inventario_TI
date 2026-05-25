@@ -20,14 +20,16 @@ class ChatRequest(BaseModel):
 
 def obter_dados_completos_banco():
     """
-    Carrega TODOS os registros do banco de dados (Ativos, Colaboradores, Setores, Empresas)
-    e formata-os de maneira estruturada e compacta para alimentar a IA com 100% da verdade dos dados.
+    Carrega registros do banco de dados (Ativos, Colaboradores) de forma otimizada
+    e formata-os em formato super compacto (pipe-separated) com relacionamento direto
+    de setores e e-mails para evitar atingir limites de tokens (TPM) da IA.
     """
     def c(val):
-        """Auxiliar para limpar e encurtar valores na serialização"""
+        """Auxiliar para limpar, encurtar e remover caracteres corrompidos na serialização"""
         if val is None:
             return ""
         s = str(val).strip()
+        s = s.replace("\uFFFD", "")  # Remove caractere de substituição Unicode corrompido
         if s.upper() in ["N/A", "NONE", "NULL", "SEM ATRIBUIÇÃO", "DISPONÍVEL EM ESTOQUE"]:
             return ""
         return s
@@ -36,11 +38,9 @@ def obter_dados_completos_banco():
         from APP import SessionLocal, Ativo, Colaborador, Setor, Empresa
         db = SessionLocal()
         try:
-            # 1. Carrega todas as tabelas com joins adequados para evitar N+1 queries
-            empresas = db.query(Empresa).all()
-            setores = db.query(Setor).options(joinedload(Setor.empresa)).all()
-            colaboradores = db.query(Colaborador).options(joinedload(Colaborador.setor)).all()
-            ativos = db.query(Ativo).options(joinedload(Ativo.colaborador)).all()
+            # 1. Carrega dados de forma eficiente com joins para evitar queries N+1
+            colaboradores = db.query(Colaborador).all()
+            ativos = db.query(Ativo).options(joinedload(Ativo.colaborador).joinedload(Colaborador.setor)).all()
             
             # 2. Estatísticas Consolidadas
             total_ativos = len(ativos)
@@ -58,27 +58,19 @@ def obter_dados_completos_banco():
             # Soma dos valores
             soma_valor = sum(float(a.valor) for a in ativos if a.valor is not None)
             
-            # 3. Formata Empresas e Setores (Formato Compacto)
-            empresas_map = {e.id: e.nome for e in empresas}
-            lista_setores = ["ID|SETOR|EMPRESA"]
-            for s in setores:
-                emp_nome = empresas_map.get(s.empresa_id, "")
-                lista_setores.append(f"{s.id}|{c(s.nome)}|{c(emp_nome)}")
-            setores_str = "\n".join(lista_setores)
-            
-            # 4. Formata Colaboradores (Formato Compacto)
-            lista_colabs = ["ID|NOME|EMAIL|STATUS|SETOR"]
+            # 3. Formata Contatos/E-mails (Apenas colaboradores que possuem e-mail válido)
+            lista_emails = []
             for colab in colaboradores:
-                setor_nome = colab.setor.nome if colab.setor else ""
-                lista_colabs.append(
-                    f"{colab.id}|{c(colab.nome)}|{c(colab.email_corporativo)}|{c(colab.status)}|{c(setor_nome)}"
-                )
-            colabs_str = "\n".join(lista_colabs)
+                if colab.email_corporativo and colab.email_corporativo.strip():
+                    lista_emails.append(f"{c(colab.nome)}: {c(colab.email_corporativo)}")
+            emails_str = "\n".join(lista_emails)
             
-            # 5. Formata Ativos (Formato Compacto)
-            lista_ativos = ["TAG|TIPO|MARCA|MODELO|STATUS|RESPONSÁVEL|LOCAL|VALOR|WIN|OFFICE|SPECS"]
+            # 4. Formata Ativos (Formato Compacto com Responsável e Setor integrados por linha)
+            lista_ativos = ["TAG|TIPO|MARCA|MODELO|STATUS|RESPONSÁVEL|SETOR|LOCAL|VALOR|WIN|OFFICE|SPECS"]
             for a in ativos:
                 colab_nome = a.colaborador.nome if a.colaborador else ""
+                setor_nome = a.colaborador.setor.nome if (a.colaborador and a.colaborador.setor) else ""
+                
                 valor_f = ""
                 if a.valor is not None:
                     try:
@@ -89,7 +81,7 @@ def obter_dados_completos_banco():
                 
                 lista_ativos.append(
                     f"{c(a.tag_patrimonio)}|{c(a.tipo)}|{c(a.marca)}|{c(a.modelo)}|{c(a.status)}|"
-                    f"{c(colab_nome)}|{c(a.local_fisico)}|{valor_f}|{c(a.licenca_windows)}|"
+                    f"{c(colab_nome)}|{c(setor_nome)}|{c(a.local_fisico)}|{valor_f}|{c(a.licenca_windows)}|"
                     f"{c(a.licenca_office)}|{c(a.especificacoes)}"
                 )
             ativos_str = "\n".join(lista_ativos)
@@ -103,13 +95,10 @@ def obter_dados_completos_banco():
                 f"- Equipamentos por Categoria: {contagem_tipos}\n"
                 f"- Valor Total do Inventário: R$ {soma_valor:,.2f}\n\n"
                 
-                f"=== SETORES E DEPARTAMENTOS ===\n"
-                f"{setores_str}\n\n"
+                f"=== EMAILS DE CONTATO ===\n"
+                f"{emails_str}\n\n"
                 
-                f"=== CADASTRO COMPLETO DE COLABORADORES ===\n"
-                f"{colabs_str}\n\n"
-                
-                f"=== CADASTRO COMPLETO DE ATIVOS / EQUIPAMENTOS ===\n"
+                f"=== ATIVOS / EQUIPAMENTOS ===\n"
                 f"{ativos_str}\n"
             )
             return contexto
@@ -134,7 +123,7 @@ async def conversar_com_groq(request: ChatRequest):
             "3. TOM TÉCNICO E SECO: Fale em Português do Brasil de forma extremamente séria, factual, direta e técnica.\n"
             "4. FOCO ABSOLUTO E 100% DE FIDELIDADE: Responda baseado EXCLUSIVAMENTE nos dados abaixo. Nunca invente ativos, nomes, status ou números. Se perguntarem sobre algo que não está na lista abaixo, diga secamente: 'Registro não localizado no banco de dados.'\n"
             "5. NUNCA EXPLIQUE O SEU PROCESSO: Não diga 'Consultando o banco...', 'Com base nas estatísticas...', ou 'Aqui estão as informações...'. Apenas exiba as informações.\n"
-            "6. ESTRUTURA DOS DADOS: Os dados de setores, colaboradores e ativos estão estruturados no formato delimitado por barras (|), onde a primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n\n"
+            "6. ESTRUTURA DOS DADOS: Os dados de ativos estão estruturados em uma única tabela no formato delimitado por barras (|), contendo o responsável e seu respectivo setor diretamente em cada linha, onde a primeira linha representa o cabeçalho. Considere valores em branco/vazios como não informados ou não aplicáveis (N/A).\n\n"
             f"{contexto_completo}\n"
         )
 
