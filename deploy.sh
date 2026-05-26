@@ -71,16 +71,16 @@ echo "[5/8] Instalando dependências Python..."
 python3 -m venv venv
 source venv/bin/activate
 pip install --upgrade pip
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 # --- 6. BUILD DO FRONTEND REACT ---
 echo ""
 echo "[6/8] Instalando dependências e buildando o frontend..."
-cd web
+cd frontend
 npm install
 npm run build
 cd ..
-echo "  Build gerado em web/dist/"
+echo "  Build gerado em frontend/dist/"
 
 # --- 7. CONFIGURAR NGINX ---
 echo ""
@@ -98,9 +98,9 @@ echo "[8/8] Iniciando aplicação com PM2..."
 mkdir -p /var/log/pm2
 
 # Usar o uvicorn do virtualenv
-sed -i "s|\"uvicorn\"|\"$APP_DIR/venv/bin/uvicorn\"|" "$APP_DIR/ecosystem.config.js"
+sed -i "s|\"uvicorn\"|\"$APP_DIR/venv/bin/uvicorn\"|" "$APP_DIR/backend/ecosystem.config.js"
 
-pm2 start "$APP_DIR/ecosystem.config.js"
+pm2 start "$APP_DIR/backend/ecosystem.config.js"
 pm2 save
 
 echo ""
@@ -139,10 +139,10 @@ git pull origin main
 
 echo "Atualizando dependências Python..."
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r backend/requirements.txt
 
 echo "Rebuilding frontend..."
-cd web && npm install && npm run build && cd ..
+cd frontend && npm install && npm run build && cd ..
 
 echo "Reiniciando aplicação..."
 pm2 restart inventario-itam

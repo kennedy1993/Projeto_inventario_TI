@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Recurse -Force)",
+      "Bash(Select-Object -Property FullName)",
+      "Bash(Sort-Object FullName)",
+      "Bash(cd \"/c/Users/KennedyMonteirodeLim/OneDrive - AVANÇO SA/Documentos/GitHub/Projeto_inventario_TI\" && find . -type f -o -type d | sort)",
+      "Read(//c/c/Users/KennedyMonteirodeLim/OneDrive - AVANÇO SA/Documentos/GitHub/**)"
+    ]
+  }
+}
