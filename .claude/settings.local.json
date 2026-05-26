@@ -12,7 +12,9 @@
       "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/\" -TimeoutSec 10 2>&1)",
       "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8000/\" -TimeoutSec 10 -UseBasicParsing; Write-Output \"STATUS: $\\($r.StatusCode\\)\"; Write-Output \"BODY: $\\($r.Content\\)\" } catch { Write-Output \"ERRO: $_\" })",
       "PowerShell(pm2 save 2>&1)",
-      "Bash(npm run *)"
+      "Bash(npm run *)",
+      "Bash(git rm *)",
+      "Bash(git add *)"
     ]
   }
 }
