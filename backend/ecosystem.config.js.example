@@ -1,0 +1,30 @@
+// ==============================================================================
+// CONFIGURAÇÃO PM2 - EXEMPLO
+// Copie este arquivo para ecosystem.config.js e preencha com os valores reais.
+// NUNCA suba o arquivo ecosystem.config.js para o Git.
+// ==============================================================================
+module.exports = {
+  apps: [
+    {
+      name: "inventario-itam",
+      script: "uvicorn",
+      args: "APP:app --host 0.0.0.0 --port 8000 --workers 2",
+      interpreter: "none",
+      cwd: "C:\\CAMINHO\\PARA\\backend",
+      env: {
+        PYTHONUNBUFFERED: "1",
+        DATABASE_URL: "postgresql://postgres:SUA_SENHA@localhost:5432/itam_avanco?application_name=itam_api",
+        ALLOWED_ORIGINS: "http://SEU_IP_SERVIDOR,http://localhost:5173",
+        GROQ_API_KEY: "sua_chave_groq_aqui"
+      },
+      error_file: "C:\\Logs\\pm2\\inventario-error.log",
+      out_file: "C:\\Logs\\pm2\\inventario-out.log",
+      log_date_format: "YYYY-MM-DD HH:mm:ss",
+      restart_delay: 3000,
+      max_restarts: 10,
+      autorestart: true,
+      watch: false,
+      time: true
+    }
+  ]
+};
