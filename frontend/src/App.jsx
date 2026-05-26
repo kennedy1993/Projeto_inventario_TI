@@ -540,9 +540,29 @@ function App() {
 
         // Limpeza e Parse de Valores Monetários do BRL
         let valor = null;
-        if (valorRaw) {
-          const cleanVal = String(valorRaw).replace('R$', '').replace(/\./g, '').replace(',', '.').trim();
-          valor = parseFloat(cleanVal);
+        if (valorRaw !== null && valorRaw !== undefined && valorRaw !== '') {
+          if (typeof valorRaw === 'number') {
+            // Excel já retornou número — usar direto, sem tocar no ponto decimal
+            valor = valorRaw;
+          } else {
+            const s = String(valorRaw).replace(/R\$\s*/g, '').replace(/\s/g, '');
+            const dots   = (s.match(/\./g) || []).length;
+            const commas = (s.match(/,/g) || []).length;
+            let cleanVal;
+            if (commas === 1) {
+              // Formato BR: pontos = milhar, vírgula = decimal  ex: "1.234,56"
+              cleanVal = s.replace(/\./g, '').replace(',', '.');
+            } else if (dots > 1) {
+              // Múltiplos pontos sem vírgula: último ponto é decimal  ex: "2.416.67"
+              const parts = s.split('.');
+              cleanVal = parts.slice(0, -1).join('') + '.' + parts[parts.length - 1];
+            } else {
+              // Ponto único (decimal US) ou sem separadores
+              cleanVal = s;
+            }
+            valor = parseFloat(cleanVal);
+          }
+          if (isNaN(valor)) valor = null;
         }
 
         // Tentar adivinhar a Categoria do Ativo caso não informada
