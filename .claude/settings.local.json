@@ -3,7 +3,16 @@
     "allow": [
       "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KennedyMonteirodeLim\\\\OneDrive - AVANÇO SA\\\\Documentos\\\\GitHub\\\\Projeto_inventario_TI\" -Force)",
       "Bash(Select-Object Name, PSIsContainer)",
-      "Bash(Format-Table -AutoSize)"
+      "Bash(Format-Table -AutoSize)",
+      "Bash(ls \"C:\\\\inetpub\\\\inventarioavanco\" 2>/dev/null || echo \"pasta não encontrada\")",
+      "Read(//c/inetpub/inventarioavanco/**)",
+      "Bash(Get-Content \"C:\\\\inetpub\\\\inventarioavanco\\\\index.html\")",
+      "Bash(Select-String \"api|localhost|127\")",
+      "PowerShell(pm2 list 2>&1)",
+      "PowerShell(Invoke-RestMethod -Uri \"http://localhost:8000/\" -TimeoutSec 10 2>&1)",
+      "PowerShell(try { $r = Invoke-WebRequest -Uri \"http://localhost:8000/\" -TimeoutSec 10 -UseBasicParsing; Write-Output \"STATUS: $\\($r.StatusCode\\)\"; Write-Output \"BODY: $\\($r.Content\\)\" } catch { Write-Output \"ERRO: $_\" })",
+      "PowerShell(pm2 save 2>&1)",
+      "Bash(npm run *)"
     ]
   }
 }

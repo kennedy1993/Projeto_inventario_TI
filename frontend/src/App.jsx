@@ -638,6 +638,13 @@ function App() {
     showToast("Exportação PDF efetuada com sucesso!", "success");
   };
 
+  // Média de valor dos notebooks para destaque visual
+  const avgNotebookValue = React.useMemo(() => {
+    const notebooks = ativos.filter(a => a.tipo === 'NOTEBOOK' && a.valor != null);
+    if (notebooks.length === 0) return 0;
+    return notebooks.reduce((sum, n) => sum + n.valor, 0) / notebooks.length;
+  }, [ativos]);
+
   // Filtragem e Ordenação avançada
   const filteredAtivos = React.useMemo(() => {
     return ativos
@@ -909,6 +916,19 @@ function App() {
                   R$ {filteredAtivos.reduce((acc, curr) => acc + (curr.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </div>
               </div>
+              {avgNotebookValue > 0 && (
+                <div className="stat-card" style={{flex: 1, padding: '1rem', borderColor: 'rgba(245,158,11,0.3)'}}>
+                  <div className="stat-label" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                    <AlertTriangle size={13} color="var(--warning)" /> Média Notebooks
+                  </div>
+                  <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--warning)'}}>
+                    R$ {avgNotebookValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </div>
+                  <div style={{fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>
+                    {ativos.filter(a => a.tipo === 'NOTEBOOK' && a.valor != null && a.valor > avgNotebookValue).length} acima da média
+                  </div>
+                </div>
+              )}
             </div>
 
             {/* Tabela de Equipamentos Geral */}
@@ -952,7 +972,26 @@ function App() {
                         </span>
                       </td>
                       <td style={{fontWeight: '600', color: 'var(--text-main)'}}>
-                        {ativo.valor ? `R$ ${ativo.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap'}}>
+                          {ativo.valor ? `R$ ${ativo.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
+                          {ativo.tipo === 'NOTEBOOK' && ativo.valor != null && avgNotebookValue > 0 && ativo.valor > avgNotebookValue && (
+                            <span
+                              title={`Acima da média dos notebooks (R$ ${avgNotebookValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })})`}
+                              style={{
+                                fontSize: '0.65rem',
+                                fontWeight: '700',
+                                backgroundColor: 'rgba(245,158,11,0.15)',
+                                color: 'var(--warning)',
+                                border: '1px solid rgba(245,158,11,0.4)',
+                                borderRadius: '4px',
+                                padding: '1px 5px',
+                                whiteSpace: 'nowrap'
+                              }}
+                            >
+                              ▲ Acima da Média
+                            </span>
+                          )}
+                        </div>
                       </td>
                       <td style={{textAlign: 'center'}} onClick={(e) => e.stopPropagation()}>
                         <div style={{display: 'flex', justifyContent: 'center', gap: '0.5rem'}}>
