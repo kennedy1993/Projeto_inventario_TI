@@ -1,0 +1,9 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(Get-ChildItem -Path \"c:\\\\Users\\\\KennedyMonteirodeLim\\\\OneDrive - AVANÇO SA\\\\Documentos\\\\GitHub\\\\Projeto_inventario_TI\" -Force)",
+      "Bash(Select-Object Name, PSIsContainer)",
+      "Bash(Format-Table -AutoSize)"
+    ]
+  }
+}
