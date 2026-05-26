@@ -686,5 +686,14 @@ def relatorio_ativos_por_tipo(db: Session = Depends(get_db)):
     for a in ativos:
         tipo = a.tipo or "Não Definido"
         report[tipo] = report.get(tipo, 0) + 1
-    
+
     return [{"tipo": k, "quantidade": v} for k, v in report.items()]
+
+
+# --- SERVE FRONTEND REACT (produção) ---
+# Deve ser o ÚLTIMO mount — captura tudo que não casou com rotas /api
+from fastapi.staticfiles import StaticFiles as _StaticFiles
+
+_dist_dir = os.path.join(os.path.dirname(os.path.abspath(__file__)), "web", "dist")
+if os.path.isdir(_dist_dir):
+    app.mount("/", _StaticFiles(directory=_dist_dir, html=True), name="frontend")
