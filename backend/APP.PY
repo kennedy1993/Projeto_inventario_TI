@@ -332,6 +332,7 @@ def listar_ativos(
             "status": a.status,
             "licenca_windows": a.licenca_windows,
             "licenca_office": a.licenca_office,
+            "numero_chip": a.numero_chip,
             "valor": float(a.valor) if a.valor else None,
             "colaborador_id": a.colaborador_id,
             "colaborador": {

@@ -28,7 +28,8 @@ import {
   Sparkles,
   ChevronRight,
   MessageSquare,
-  Send
+  Send,
+  Smartphone
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -968,6 +969,12 @@ function App() {
                   <tr>
                     <th onClick={() => requestSort('tag_patrimonio')}>TAG {sortConfig.key === 'tag_patrimonio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('tipo')}>Tipo {sortConfig.key === 'tipo' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th style={{minWidth: '140px'}}>
+                      <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                        <Smartphone size={13} />
+                        Chip
+                      </div>
+                    </th>
                     <th onClick={() => requestSort('marca')}>Equipamento {sortConfig.key === 'marca' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('colaborador')}>Colaborador {sortConfig.key === 'colaborador' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th>Setor</th>
@@ -983,6 +990,20 @@ function App() {
                       <td style={{color: 'var(--accent)', fontWeight: '600'}}>{ativo.tag_patrimonio}</td>
                       <td>
                         <span className="type-badge">{ativo.tipo || 'N/A'}</span>
+                      </td>
+                      <td>
+                        {ativo.tipo === 'CELULAR' ? (
+                          ativo.numero_chip ? (
+                            <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                              <Smartphone size={13} color="var(--accent)" style={{flexShrink: 0}} />
+                              <span style={{fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-main)'}}>{ativo.numero_chip}</span>
+                            </div>
+                          ) : (
+                            <span style={{fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic'}}>Não cadastrado</span>
+                          )
+                        ) : (
+                          <span style={{color: 'var(--text-muted)'}}>—</span>
+                        )}
                       </td>
                       <td>
                         <div style={{fontWeight: '500'}}>{ativo.marca} {ativo.modelo}</div>
