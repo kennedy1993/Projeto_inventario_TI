@@ -203,10 +203,17 @@ function App() {
       }]);
     } catch (error) {
       console.error("Erro ao falar com a IA:", error);
+      const detalhe = error?.response?.data?.detail;
+      const isNetworkError = !error?.response;
+      const mensagemErro = isNetworkError
+        ? 'Sem conexão com o servidor. Verifique se o backend FastAPI está rodando em ' + API_BASE_URL
+        : detalhe
+          ? `Assistente indisponível: ${detalhe}`
+          : 'Erro inesperado no Assistente de IA. Tente novamente.';
       setChatMessages(prev => [...prev, {
         id: Date.now() + 1,
         sender: 'system-error',
-        text: 'Desculpe, ocorreu um erro de conexão com o Assistente de IA. Verifique se o servidor FastAPI está ativo.'
+        text: mensagemErro
       }]);
     } finally {
       setChatLoading(false);
