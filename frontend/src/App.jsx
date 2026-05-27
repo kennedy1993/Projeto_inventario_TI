@@ -630,36 +630,134 @@ function App() {
   const COLORS = ['#2563eb', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#38bdf8', '#ec4899'];
 
   const exportToExcel = () => {
-    const ws = XLSX.utils.json_to_sheet(ativos);
+    const hasChip = filteredAtivos.some(a => a.tipo === 'CELULAR');
+    const filterSuffix = filterTipo !== 'Todos' ? `_${filterTipo}`
+                       : filterStatus !== 'Todos' ? `_${filterStatus}`
+                       : '';
+
+    const dataToExport = filteredAtivos.map(a => {
+      const row = {};
+      row['TAG Patrimônio']    = a.tag_patrimonio;
+      row['Tipo']              = a.tipo || '';
+      if (hasChip) row['Número do Chip'] = a.tipo === 'CELULAR' ? (a.numero_chip || '') : '';
+      row['Marca']             = a.marca || '';
+      row['Modelo']            = a.modelo || '';
+      row['Especificações']    = a.especificacoes || '';
+      row['Colaborador']       = a.colaborador?.nome || '';
+      row['Setor']             = a.colaborador?.setor || '';
+      row['Local']             = a.local_fisico || '';
+      row['Status']            = a.status || '';
+      row['Licença Windows']   = a.licenca_windows || '';
+      row['Licença Office']    = a.licenca_office || '';
+      row['Valor (R$)']        = a.valor ? Number(a.valor).toFixed(2).replace('.', ',') : '';
+      return row;
+    });
+
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+
+    // Larguras das colunas
+    const colW = [16, 12, 15, 14, 20, 35, 22, 18, 14, 12, 22, 18, 14];
+    if (hasChip) colW.splice(2, 0, 18);
+    ws['!cols'] = colW.map(w => ({ wch: w }));
+
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Ativos");
-    XLSX.writeFile(wb, "Inventario_TI_Avanco.xlsx");
-    showToast("Exportação Excel efetuada com sucesso!", "success");
+    XLSX.writeFile(wb, `Inventario_TI_Avanco${filterSuffix}.xlsx`);
+    showToast(`Exportação Excel concluída — ${filteredAtivos.length} itens exportados!`, "success");
   };
 
   const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.text("Inventário de T.I - Avanço Construções", 14, 15);
-    const tableColumn = ["TAG", "Tipo", "Equipamento", "Local", "Status", "Valor"];
-    const tableRows = ativos.map(a => [
-      a.tag_patrimonio, 
-      a.tipo, 
-      `${a.marca} ${a.modelo}`, 
-      a.local_fisico, 
-      a.status,
-      a.valor ? `R$ ${a.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'
-    ]);
-    
-    autoTable(doc, { 
-      head: [tableColumn], 
-      body: tableRows, 
-      startY: 20,
-      theme: 'grid',
-      headStyles: { fillColor: '#2563eb' },
-      styles: { fontSize: 9 }
+    const hasChip = filteredAtivos.some(a => a.tipo === 'CELULAR');
+    const filterLabel  = filterTipo !== 'Todos'   ? filterTipo
+                       : filterStatus !== 'Todos' ? filterStatus
+                       : filterLocal !== 'Todos'  ? filterLocal
+                       : 'Todos os Equipamentos';
+    const filterSuffix = filterTipo !== 'Todos'   ? `_${filterTipo}`
+                       : filterStatus !== 'Todos' ? `_${filterStatus}`
+                       : '';
+
+    const doc = new jsPDF({ orientation: hasChip ? 'landscape' : 'portrait' });
+    const pageW = doc.internal.pageSize.width;
+
+    // Cabeçalho
+    doc.setFont('helvetica', 'bold');
+    doc.setFontSize(13);
+    doc.setTextColor(15, 23, 42);
+    doc.text('Inventário de T.I — Avanço Construções', 14, 14);
+
+    doc.setFont('helvetica', 'normal');
+    doc.setFontSize(8.5);
+    doc.setTextColor(100, 116, 139);
+    const dataEmissao = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    doc.text(
+      `Filtro: ${filterLabel}   ·   ${filteredAtivos.length} itens   ·   Emitido em ${dataEmissao}`,
+      14, 21
+    );
+
+    // Linha separadora
+    doc.setDrawColor(226, 232, 240);
+    doc.setLineWidth(0.4);
+    doc.line(14, 24, pageW - 14, 24);
+
+    doc.setTextColor(0, 0, 0);
+
+    // Colunas dinâmicas
+    const tableColumn = hasChip
+      ? ['TAG', 'Tipo', 'Nº Chip', 'Equipamento', 'Colaborador', 'Setor', 'Local', 'Status', 'Valor (R$)']
+      : ['TAG', 'Tipo', 'Equipamento', 'Colaborador', 'Setor', 'Local', 'Status', 'Valor (R$)'];
+
+    const tableRows = filteredAtivos.map(a => {
+      const base = [
+        a.tag_patrimonio,
+        a.tipo || '',
+        `${a.marca || ''} ${a.modelo || ''}`.trim(),
+        a.colaborador?.nome || 'Disponível',
+        a.colaborador?.setor || '—',
+        a.local_fisico || '',
+        a.status || '',
+        a.valor ? `R$ ${Number(a.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—',
+      ];
+      if (hasChip) base.splice(2, 0, a.tipo === 'CELULAR' ? (a.numero_chip || '—') : '—');
+      return base;
     });
-    doc.save("Inventario_TI_Avanco.pdf");
-    showToast("Exportação PDF efetuada com sucesso!", "success");
+
+    autoTable(doc, {
+      head: [tableColumn],
+      body: tableRows,
+      startY: 28,
+      theme: 'grid',
+      headStyles: {
+        fillColor: [37, 99, 235],
+        textColor: 255,
+        fontStyle: 'bold',
+        fontSize: 7.5,
+        halign: 'left',
+        cellPadding: { top: 4, bottom: 4, left: 4, right: 4 },
+      },
+      bodyStyles: {
+        fontSize: 7.5,
+        cellPadding: { top: 3, bottom: 3, left: 4, right: 4 },
+        textColor: [30, 41, 59],
+      },
+      alternateRowStyles: { fillColor: [248, 250, 252] },
+      columnStyles: { 0: { fontStyle: 'bold', textColor: [37, 99, 235] } },
+      margin: { left: 14, right: 14 },
+      didDrawPage: (data) => {
+        const total = doc.internal.getNumberOfPages();
+        const current = doc.internal.getCurrentPageInfo().pageNumber;
+        doc.setFontSize(7.5);
+        doc.setTextColor(148, 163, 184);
+        doc.text(
+          `Página ${current} de ${total}`,
+          pageW - 14,
+          doc.internal.pageSize.height - 8,
+          { align: 'right' }
+        );
+      },
+    });
+
+    doc.save(`Inventario_TI_Avanco${filterSuffix}.pdf`);
+    showToast(`Exportação PDF concluída — ${filteredAtivos.length} itens exportados!`, "success");
   };
 
   // Média de valor dos notebooks para destaque visual
