@@ -101,6 +101,8 @@ Base.metadata.create_all(bind=engine)
 from sqlalchemy import text as _text
 with engine.connect() as _conn:
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS numero_chip VARCHAR"))
+    # Normaliza e-mails vazios para NULL (evita violação de UNIQUE em cadastros sem e-mail)
+    _conn.execute(_text("UPDATE colaboradores SET email_corporativo = NULL WHERE email_corporativo = ''"))
     _conn.commit()
 
 
@@ -610,7 +612,7 @@ def atualizar_colaborador(colaborador_id: int, data: ColaboradorUpdate, db: Sess
     
     update_data = data.dict(exclude_unset=True)
     if "email_corporativo" in update_data:
-        db_colab.email_corporativo = update_data["email_corporativo"]
+        db_colab.email_corporativo = update_data["email_corporativo"] if update_data["email_corporativo"] else None
     if "nome" in update_data:
         db_colab.nome = update_data["nome"]
     if "setor_id" in update_data:
@@ -625,15 +627,15 @@ def atualizar_colaborador(colaborador_id: int, data: ColaboradorUpdate, db: Sess
 # Rota para cadastrar um novo colaborador
 @app.post("/api/colaboradores")
 def criar_colaborador(colab: ColaboradorCreate, db: Session = Depends(get_db)):
-    # Validar duplicidade de e-mail corporativo (se preenchido)
-    if colab.email_corporativo:
-        db_colab = db.query(Colaborador).filter(Colaborador.email_corporativo == colab.email_corporativo).first()
-        if db_colab:
+    email = colab.email_corporativo if colab.email_corporativo else None
+
+    if email:
+        if db.query(Colaborador).filter(Colaborador.email_corporativo == email).first():
             raise HTTPException(status_code=400, detail="E-mail corporativo já cadastrado para outro colaborador.")
-            
+
     novo_colab = Colaborador(
         nome=colab.nome,
-        email_corporativo=colab.email_corporativo,
+        email_corporativo=email,
         setor_id=colab.setor_id,
         status=colab.status or "Ativo"
     )

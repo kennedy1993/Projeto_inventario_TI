@@ -357,6 +357,7 @@ function App() {
       const payload = { ...colabFormData };
       if (payload.setor_id) payload.setor_id = parseInt(payload.setor_id);
       else payload.setor_id = null;
+      if (!payload.email_corporativo) payload.email_corporativo = null;
 
       await axios.post(`${API_BASE_URL}/api/colaboradores`, payload);
       showToast("Colaborador cadastrado com sucesso!", "success");
@@ -384,6 +385,7 @@ function App() {
       const payload = { ...colabFormData };
       if (payload.setor_id) payload.setor_id = parseInt(payload.setor_id);
       else payload.setor_id = null;
+      if (!payload.email_corporativo) payload.email_corporativo = null;
 
       await axios.put(`${API_BASE_URL}/api/colaboradores/${editingColab.id}`, payload);
       showToast("Colaborador atualizado com sucesso!", "success");
