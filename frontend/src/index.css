@@ -26,7 +26,8 @@ body {
 
 .app-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Sidebar Styles */
@@ -262,6 +263,28 @@ td {
 .recent-list-container {
   flex: 1.5;
   min-width: 0; /* Fix for Recharts in Flex */
+}
+
+/* Sticky Top Header — Equipamentos Tab */
+.equipamentos-sticky-top {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.97);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  padding-bottom: 1.5rem;
+  padding-top: 0;
+  border-bottom: 1px solid rgba(51, 65, 85, 0.8);
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.35);
+}
+
+.equipamentos-sticky-top header {
+  margin-bottom: 1.5rem;
+}
+
+.equipamentos-sticky-top .filter-bar {
+  margin-bottom: 0;
 }
 
 /* Filter Bar */

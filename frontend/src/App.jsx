@@ -750,15 +750,16 @@ function App() {
 
       {/* Main Content Area */}
       <main className="main-content">
-        <header>
-          <h1>
-            {activeTab === 'dashboard' ? 'Dashboard de Inventário' : 
-             activeTab === 'ativos' ? 'Gestão de Equipamentos' :
-             activeTab === 'colaboradores' ? 'Gestão de Colaboradores' : 
-             activeTab === 'importar' ? 'Importação Inteligente Excel' : 'Relatórios Estratégicos'}
-          </h1>
-          <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
-        </header>
+        {activeTab !== 'ativos' && (
+          <header>
+            <h1>
+              {activeTab === 'dashboard' ? 'Dashboard de Inventário' :
+               activeTab === 'colaboradores' ? 'Gestão de Colaboradores' :
+               activeTab === 'importar' ? 'Importação Inteligente Excel' : 'Relatórios Estratégicos'}
+            </h1>
+            <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
+          </header>
+        )}
 
         {loading && activeTab !== 'importar' ? (
           <div style={{display: 'flex', justifyContent: 'center', padding: '5rem', color: 'var(--text-muted)'}}>
@@ -861,7 +862,12 @@ function App() {
           </>
         ) : activeTab === 'ativos' ? (
           <>
-            {/* Filtros e Controles de Ações */}
+            <div className="equipamentos-sticky-top">
+              <header>
+                <h1>Gestão de Equipamentos</h1>
+                <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
+              </header>
+              {/* Filtros e Controles de Ações */}
             <div className="filter-bar">
               <div className="search-box">
                 <Search size={18} />
@@ -924,6 +930,7 @@ function App() {
                 <Plus size={20} /> Novo Ativo
               </button>
             </div>
+            </div>{/* fim equipamentos-sticky-top */}
 
             <div style={{display: 'flex', gap: '1rem', marginBottom: '1.5rem'}}>
               <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
