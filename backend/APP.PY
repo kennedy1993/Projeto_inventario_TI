@@ -74,6 +74,7 @@ class Ativo(Base):
     status = Column(String, default="Estoque")
     licenca_windows = Column(String)
     licenca_office = Column(String)
+    numero_chip = Column(String)
     valor = Column(Numeric(10, 2))
     colaborador_id = Column(Integer, ForeignKey("colaboradores.id"), nullable=True)
     
@@ -96,6 +97,12 @@ class HistoricoAtivo(Base):
 # Criar as tabelas no banco de dados automaticamente (após as tabelas estarem definidas no script Python)
 Base.metadata.create_all(bind=engine)
 
+# Migração incremental: garante colunas adicionadas após criação inicial da tabela
+from sqlalchemy import text as _text
+with engine.connect() as _conn:
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS numero_chip VARCHAR"))
+    _conn.commit()
+
 
 # --- 3. SCHEMAS (Pydantic) ---
 # Usados para validar os dados que entram e saem da API
@@ -110,6 +117,7 @@ class AtivoBase(BaseModel):
     status: Optional[str] = None
     licenca_windows: Optional[str] = None
     licenca_office: Optional[str] = None
+    numero_chip: Optional[str] = None
     valor: Optional[float] = None
     colaborador_id: Optional[int] = None
 
@@ -126,6 +134,7 @@ class AtivoUpdate(BaseModel):
     status: Optional[str] = None
     licenca_windows: Optional[str] = None
     licenca_office: Optional[str] = None
+    numero_chip: Optional[str] = None
     valor: Optional[float] = None
     colaborador_id: Optional[int] = None
 
@@ -174,6 +183,7 @@ class AtivoResponse(BaseModel):
     status: Any = None
     licenca_windows: Any = None
     licenca_office: Any = None
+    numero_chip: Any = None
     valor: Any = None
     colaborador_id: Any = None
     colaborador: Optional[ColaboradorSimple] = None

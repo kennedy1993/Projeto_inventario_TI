@@ -281,6 +281,7 @@ function App() {
       status: ativo.status || 'Estoque',
       licenca_windows: ativo.licenca_windows || '',
       licenca_office: ativo.licenca_office || '',
+      numero_chip: ativo.numero_chip || '',
       valor: ativo.valor || '',
       colaborador_id: ativo.colaborador_id || ''
     });
@@ -300,9 +301,9 @@ function App() {
       showToast("Equipamento cadastrado com sucesso!", "success");
       setIsModalOpen(false);
       setFormData({
-        tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '', 
+        tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
         especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
-        licenca_windows: '', licenca_office: '', valor: '', colaborador_id: ''
+        licenca_windows: '', licenca_office: '', numero_chip: '', valor: '', colaborador_id: ''
       });
       fetchData();
     } catch (error) {
@@ -921,9 +922,9 @@ function App() {
 
               <button className="btn-primary gradient-btn" onClick={() => {
                 setFormData({
-                  tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '', 
+                  tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
                   especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
-                  licenca_windows: '', licenca_office: '', valor: '', colaborador_id: ''
+                  licenca_windows: '', licenca_office: '', numero_chip: '', valor: '', colaborador_id: ''
                 });
                 setIsModalOpen(true);
               }}>
@@ -1350,6 +1351,13 @@ function App() {
                   </div>
                 </div>
 
+                {formData.tipo === 'CELULAR' && (
+                  <div className="form-group">
+                    <label>Número do Chip (SIM)</label>
+                    <input value={formData.numero_chip} onChange={e => setFormData({...formData, numero_chip: e.target.value})} placeholder="Ex: (11) 99999-0000" />
+                  </div>
+                )}
+
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
                     <label>Valor (R$)</label>
@@ -1443,6 +1451,13 @@ function App() {
                     <input value={formData.licenca_office} onChange={e => setFormData({...formData, licenca_office: e.target.value})} />
                   </div>
                 </div>
+
+                {formData.tipo === 'CELULAR' && (
+                  <div className="form-group">
+                    <label>Número do Chip (SIM)</label>
+                    <input value={formData.numero_chip} onChange={e => setFormData({...formData, numero_chip: e.target.value})} placeholder="Ex: (11) 99999-0000" />
+                  </div>
+                )}
 
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
