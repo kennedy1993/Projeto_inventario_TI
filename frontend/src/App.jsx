@@ -136,6 +136,8 @@ function App() {
     status: 'Estoque',
     licenca_windows: '',
     licenca_office: '',
+    numero_chip: '',
+    observacao: '',
     valor: '',
     colaborador_id: ''
   });
@@ -290,6 +292,7 @@ function App() {
       licenca_windows: ativo.licenca_windows || '',
       licenca_office: ativo.licenca_office || '',
       numero_chip: ativo.numero_chip || '',
+      observacao: ativo.observacao || '',
       valor: ativo.valor || '',
       colaborador_id: ativo.colaborador_id || ''
     });
@@ -311,7 +314,7 @@ function App() {
       setFormData({
         tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
         especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
-        licenca_windows: '', licenca_office: '', numero_chip: '', valor: '', colaborador_id: ''
+        licenca_windows: '', licenca_office: '', numero_chip: '', observacao: '', valor: '', colaborador_id: ''
       });
       fetchData();
     } catch (error) {
@@ -1032,7 +1035,7 @@ function App() {
                 setFormData({
                   tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
                   especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
-                  licenca_windows: '', licenca_office: '', numero_chip: '', valor: '', colaborador_id: ''
+                  licenca_windows: '', licenca_office: '', numero_chip: '', observacao: '', valor: '', colaborador_id: ''
                 });
                 setIsModalOpen(true);
               }}>
@@ -1071,15 +1074,16 @@ function App() {
             <div className="table-container">
               <table>
                 <colgroup>
+                  <col style={{width: '8%'}} />
+                  <col style={{width: '6%'}} />
+                  <col style={{width: '12%'}} />
+                  <col style={{width: '14%'}} />
+                  <col style={{width: '11%'}} />
                   <col style={{width: '9%'}} />
                   <col style={{width: '7%'}} />
-                  <col style={{width: '13%'}} />
-                  <col style={{width: '18%'}} />
-                  <col style={{width: '13%'}} />
-                  <col style={{width: '11%'}} />
-                  <col style={{width: '8%'}} />
-                  <col style={{width: '8%'}} />
                   <col style={{width: '7%'}} />
+                  <col style={{width: '7%'}} />
+                  <col style={{width: '13%'}} />
                   <col style={{width: '6%'}} />
                 </colgroup>
                 <thead>
@@ -1098,6 +1102,7 @@ function App() {
                     <th onClick={() => requestSort('local_fisico')}>Local {sortConfig.key === 'local_fisico' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('status')}>Status {sortConfig.key === 'status' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('valor')}>Valor {sortConfig.key === 'valor' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                    <th>Observação</th>
                     <th style={{textAlign: 'center'}}>Ações</th>
                   </tr>
                 </thead>
@@ -1162,6 +1167,15 @@ function App() {
                             </span>
                           )}
                         </div>
+                      </td>
+                      <td style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>
+                        {ativo.observacao ? (
+                          <span style={{fontSize: '0.8rem', color: 'var(--text-muted)'}} title={ativo.observacao}>
+                            {ativo.observacao}
+                          </span>
+                        ) : (
+                          <span style={{color: 'var(--text-muted)', opacity: 0.4}}>—</span>
+                        )}
                       </td>
                       <td style={{textAlign: 'center'}} onClick={(e) => e.stopPropagation()}>
                         <div style={{display: 'flex', justifyContent: 'center', gap: '0.25rem'}}>
@@ -1532,6 +1546,11 @@ function App() {
                   </div>
                 </div>
 
+                <div className="form-group">
+                  <label>Observação</label>
+                  <textarea rows="2" value={formData.observacao} onChange={e => setFormData({...formData, observacao: e.target.value})} placeholder="Anotações adicionais sobre o equipamento..." />
+                </div>
+
                 <button type="submit" className="btn-primary gradient-btn" style={{width: '100%', justifyContent: 'center', marginTop: '1rem'}}>
                   Salvar Equipamento
                 </button>
@@ -1631,6 +1650,11 @@ function App() {
                       ))}
                     </select>
                   </div>
+                </div>
+
+                <div className="form-group">
+                  <label>Observação</label>
+                  <textarea rows="2" value={formData.observacao} onChange={e => setFormData({...formData, observacao: e.target.value})} placeholder="Anotações adicionais sobre o equipamento..." />
                 </div>
 
                 <button type="submit" className="btn-primary gradient-btn" style={{width: '100%', justifyContent: 'center', marginTop: '1rem'}}>

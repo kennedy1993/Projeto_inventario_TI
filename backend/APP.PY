@@ -75,6 +75,7 @@ class Ativo(Base):
     licenca_windows = Column(String)
     licenca_office = Column(String)
     numero_chip = Column(String)
+    observacao = Column(String)
     valor = Column(Numeric(10, 2))
     colaborador_id = Column(Integer, ForeignKey("colaboradores.id"), nullable=True)
     
@@ -101,6 +102,7 @@ Base.metadata.create_all(bind=engine)
 from sqlalchemy import text as _text
 with engine.connect() as _conn:
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS numero_chip VARCHAR"))
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS observacao VARCHAR"))
     # Normaliza e-mails vazios para NULL (evita violação de UNIQUE em cadastros sem e-mail)
     _conn.execute(_text("UPDATE colaboradores SET email_corporativo = NULL WHERE email_corporativo = ''"))
     _conn.commit()
@@ -120,6 +122,7 @@ class AtivoBase(BaseModel):
     licenca_windows: Optional[str] = None
     licenca_office: Optional[str] = None
     numero_chip: Optional[str] = None
+    observacao: Optional[str] = None
     valor: Optional[float] = None
     colaborador_id: Optional[int] = None
 
@@ -137,6 +140,7 @@ class AtivoUpdate(BaseModel):
     licenca_windows: Optional[str] = None
     licenca_office: Optional[str] = None
     numero_chip: Optional[str] = None
+    observacao: Optional[str] = None
     valor: Optional[float] = None
     colaborador_id: Optional[int] = None
 
@@ -186,6 +190,7 @@ class AtivoResponse(BaseModel):
     licenca_windows: Any = None
     licenca_office: Any = None
     numero_chip: Any = None
+    observacao: Any = None
     valor: Any = None
     colaborador_id: Any = None
     colaborador: Optional[ColaboradorSimple] = None
