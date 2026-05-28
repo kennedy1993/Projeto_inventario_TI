@@ -1071,16 +1071,16 @@ function App() {
             <div className="table-container">
               <table>
                 <colgroup>
-                  <col style={{width: '120px'}} />
-                  <col style={{width: '88px'}} />
-                  <col style={{width: '158px'}} />
-                  <col />
-                  <col style={{width: '148px'}} />
-                  <col style={{width: '120px'}} />
-                  <col style={{width: '88px'}} />
-                  <col style={{width: '92px'}} />
-                  <col style={{width: '138px'}} />
-                  <col style={{width: '76px'}} />
+                  <col style={{width: '9%'}} />
+                  <col style={{width: '7%'}} />
+                  <col style={{width: '13%'}} />
+                  <col style={{width: '18%'}} />
+                  <col style={{width: '13%'}} />
+                  <col style={{width: '11%'}} />
+                  <col style={{width: '8%'}} />
+                  <col style={{width: '8%'}} />
+                  <col style={{width: '7%'}} />
+                  <col style={{width: '6%'}} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -1164,12 +1164,12 @@ function App() {
                         </div>
                       </td>
                       <td style={{textAlign: 'center'}} onClick={(e) => e.stopPropagation()}>
-                        <div style={{display: 'flex', justifyContent: 'center', gap: '0.5rem'}}>
+                        <div style={{display: 'flex', justifyContent: 'center', gap: '0.25rem'}}>
                           <button className="btn-icon" onClick={() => openEditAsset(ativo)} title="Editar Ativo">
-                            <Edit2 size={16} />
+                            <Edit2 size={15} />
                           </button>
                           <button className="btn-icon" style={{color: '#ef4444'}} onClick={() => handleDeleteAtivo(ativo.id)} title="Excluir Ativo">
-                            <Trash2 size={16} />
+                            <Trash2 size={15} />
                           </button>
                         </div>
                       </td>

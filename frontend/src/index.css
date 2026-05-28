@@ -171,7 +171,7 @@ h1 {
 
 table {
   width: 100%;
-  min-width: 1080px;
+  min-width: 1000px;
   border-collapse: collapse;
   text-align: left;
   table-layout: fixed;
@@ -179,11 +179,11 @@ table {
 
 th {
   background-color: rgba(255, 255, 255, 0.03);
-  padding: 0.875rem 1rem;
-  font-size: 0.75rem;
+  padding: 0.75rem 0.875rem;
+  font-size: 0.72rem;
   text-transform: uppercase;
   color: var(--text-muted);
-  letter-spacing: 0.05em;
+  letter-spacing: 0.06em;
   cursor: pointer;
   user-select: none;
   transition: all 0.2s;
@@ -198,18 +198,21 @@ th:hover {
 }
 
 td {
-  padding: 0.875rem 1rem;
+  padding: 0.75rem 0.875rem;
   border-top: 1px solid var(--border);
-  font-size: 0.9375rem;
+  font-size: 0.875rem;
   overflow: hidden;
   text-overflow: ellipsis;
+  vertical-align: middle;
 }
 
 .status-badge {
-  padding: 0.25rem 0.75rem;
+  padding: 0.2rem 0.6rem;
   border-radius: 9999px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 600;
+  display: inline-block;
+  white-space: nowrap;
 }
 
 .type-badge {
@@ -488,9 +491,10 @@ td {
   border: none;
   color: var(--text-muted);
   cursor: pointer;
-  padding: 0.5rem;
+  padding: 0.375rem;
   border-radius: 0.25rem;
   transition: all 0.2s;
+  flex-shrink: 0;
 }
 
 .btn-icon:hover {
