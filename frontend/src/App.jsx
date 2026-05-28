@@ -1074,7 +1074,7 @@ function App() {
                   <tr>
                     <th onClick={() => requestSort('tag_patrimonio')}>TAG {sortConfig.key === 'tag_patrimonio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('tipo')}>Tipo {sortConfig.key === 'tipo' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th style={{minWidth: '140px'}}>
+                    <th style={{minWidth: '160px', whiteSpace: 'nowrap'}}>
                       <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
                         <Smartphone size={13} />
                         Chip
@@ -1096,12 +1096,12 @@ function App() {
                       <td>
                         <span className="type-badge">{ativo.tipo || 'N/A'}</span>
                       </td>
-                      <td>
+                      <td style={{whiteSpace: 'nowrap'}}>
                         {ativo.tipo === 'CELULAR' ? (
                           ativo.numero_chip ? (
                             <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
                               <Smartphone size={13} color="var(--accent)" style={{flexShrink: 0}} />
-                              <span style={{fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-main)'}}>{ativo.numero_chip}</span>
+                              <span style={{fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap'}}>{ativo.numero_chip}</span>
                             </div>
                           ) : (
                             <span style={{fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic'}}>Não cadastrado</span>
