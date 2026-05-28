@@ -1070,11 +1070,23 @@ function App() {
             {/* Tabela de Equipamentos Geral */}
             <div className="table-container">
               <table>
+                <colgroup>
+                  <col style={{width: '120px'}} />
+                  <col style={{width: '88px'}} />
+                  <col style={{width: '158px'}} />
+                  <col />
+                  <col style={{width: '148px'}} />
+                  <col style={{width: '120px'}} />
+                  <col style={{width: '88px'}} />
+                  <col style={{width: '92px'}} />
+                  <col style={{width: '138px'}} />
+                  <col style={{width: '76px'}} />
+                </colgroup>
                 <thead>
                   <tr>
                     <th onClick={() => requestSort('tag_patrimonio')}>TAG {sortConfig.key === 'tag_patrimonio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('tipo')}>Tipo {sortConfig.key === 'tipo' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th style={{minWidth: '160px', whiteSpace: 'nowrap'}}>
+                    <th>
                       <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
                         <Smartphone size={13} />
                         Chip
@@ -1111,24 +1123,26 @@ function App() {
                         )}
                       </td>
                       <td>
-                        <div style={{fontWeight: '500'}}>{ativo.marca} {ativo.modelo}</div>
-                        <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', maxWidth: '180px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.especificacoes}</div>
+                        <div style={{fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.marca} {ativo.modelo}</div>
+                        <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.especificacoes}</div>
                       </td>
                       <td>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.5rem'}}>
-                          <Users size={14} color={ativo.colaborador ? 'var(--accent)' : 'var(--text-muted)'} />
-                          {ativo.colaborador?.nome || <span style={{color: 'var(--text-muted)', fontSize: '0.85rem'}}>Disponível</span>}
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden'}}>
+                          <Users size={14} color={ativo.colaborador ? 'var(--accent)' : 'var(--text-muted)'} style={{flexShrink: 0}} />
+                          <span style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '0.875rem'}}>
+                            {ativo.colaborador?.nome || <span style={{color: 'var(--text-muted)'}}>Disponível</span>}
+                          </span>
                         </div>
                       </td>
-                      <td>{ativo.colaborador?.setor || '-'}</td>
-                      <td>{ativo.local_fisico}</td>
+                      <td style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.colaborador?.setor || '-'}</td>
+                      <td style={{overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.local_fisico}</td>
                       <td>
                         <span className={`status-badge status-${ativo.status.toLowerCase().replace(' ', '-')}`}>
                           {ativo.status}
                         </span>
                       </td>
                       <td style={{fontWeight: '600', color: 'var(--text-main)'}}>
-                        <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap'}}>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'nowrap', overflow: 'hidden'}}>
                           {ativo.valor ? `R$ ${ativo.valor.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '-'}
                           {ativo.tipo === 'NOTEBOOK' && ativo.valor != null && avgNotebookValue > 0 && ativo.valor > avgNotebookValue && (
                             <span
