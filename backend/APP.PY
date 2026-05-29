@@ -23,7 +23,7 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship, joinedload
 from pydantic import BaseModel, ConfigDict, field_validator
 from typing import List, Optional, Any
-from datetime import datetime
+from datetime import datetime, date, timedelta
 
 # --- 1. CONFIGURAÇÃO DO BANCO DE DADOS POSTGRESQL ---
 import os
@@ -75,6 +75,10 @@ class Ativo(Base):
     licenca_windows = Column(String)
     licenca_office = Column(String)
     numero_chip = Column(String)
+    numero_serie = Column(String)
+    fornecedor = Column(String)
+    data_aquisicao = Column(Date, nullable=True)
+    data_garantia = Column(Date, nullable=True)
     observacao = Column(String)
     valor = Column(Numeric(10, 2))
     colaborador_id = Column(Integer, ForeignKey("colaboradores.id"), nullable=True)
@@ -103,6 +107,10 @@ from sqlalchemy import text as _text
 with engine.connect() as _conn:
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS numero_chip VARCHAR"))
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS observacao VARCHAR"))
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS numero_serie VARCHAR"))
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS fornecedor VARCHAR"))
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS data_aquisicao DATE"))
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS data_garantia DATE"))
     # Normaliza e-mails vazios para NULL (evita violação de UNIQUE em cadastros sem e-mail)
     _conn.execute(_text("UPDATE colaboradores SET email_corporativo = NULL WHERE email_corporativo = ''"))
     _conn.commit()
@@ -122,6 +130,10 @@ class AtivoBase(BaseModel):
     licenca_windows: Optional[str] = None
     licenca_office: Optional[str] = None
     numero_chip: Optional[str] = None
+    numero_serie: Optional[str] = None
+    fornecedor: Optional[str] = None
+    data_aquisicao: Optional[date] = None
+    data_garantia: Optional[date] = None
     observacao: Optional[str] = None
     valor: Optional[float] = None
     colaborador_id: Optional[int] = None
@@ -140,6 +152,10 @@ class AtivoUpdate(BaseModel):
     licenca_windows: Optional[str] = None
     licenca_office: Optional[str] = None
     numero_chip: Optional[str] = None
+    numero_serie: Optional[str] = None
+    fornecedor: Optional[str] = None
+    data_aquisicao: Optional[date] = None
+    data_garantia: Optional[date] = None
     observacao: Optional[str] = None
     valor: Optional[float] = None
     colaborador_id: Optional[int] = None
@@ -163,6 +179,10 @@ class AtivoBulkImportItem(BaseModel):
     valor: Optional[float] = None
     colaborador_nome: Optional[str] = None
     setor_nome: Optional[str] = None
+    numero_serie: Optional[str] = None
+    fornecedor: Optional[str] = None
+    data_aquisicao: Optional[date] = None
+    data_garantia: Optional[date] = None
 
 class ColaboradorSimple(BaseModel):
     id: int
@@ -190,6 +210,10 @@ class AtivoResponse(BaseModel):
     licenca_windows: Any = None
     licenca_office: Any = None
     numero_chip: Any = None
+    numero_serie: Any = None
+    fornecedor: Any = None
+    data_aquisicao: Any = None
+    data_garantia: Any = None
     observacao: Any = None
     valor: Any = None
     colaborador_id: Any = None
@@ -283,19 +307,51 @@ def read_root():
 # Rota para o Dashboard do React
 @app.get("/api/dashboard")
 def obter_resumo_dashboard(db: Session = Depends(get_db)):
+    hoje = date.today()
+    trinta_dias = hoje + timedelta(days=30)
+
     total = db.query(Ativo).count()
     em_uso = db.query(Ativo).filter(Ativo.status == "Em Uso").count()
     estoque = db.query(Ativo).filter(Ativo.status == "Estoque").count()
-    
-    # Calcular valor total do inventário
-    valor_total = db.query(Ativo.valor).all()
-    soma_valor = sum([float(v[0]) for v in valor_total if v[0] is not None])
-    
+    manutencao = db.query(Ativo).filter(Ativo.status == "Manutenção").count()
+    descartados = db.query(Ativo).filter(Ativo.status == "Descartado").count()
+
+    garantia_vencida = db.query(Ativo).filter(
+        Ativo.data_garantia != None,
+        Ativo.data_garantia < hoje,
+        Ativo.status != "Descartado"
+    ).count()
+
+    garantia_vencendo_30d = db.query(Ativo).filter(
+        Ativo.data_garantia != None,
+        Ativo.data_garantia >= hoje,
+        Ativo.data_garantia <= trinta_dias
+    ).count()
+
+    # Valor e quantidade por tipo (ordenado por valor desc)
+    ativos_all = db.query(Ativo.tipo, Ativo.valor).all()
+    valor_por_tipo_dict: dict = {}
+    count_por_tipo_dict: dict = {}
+    for tipo, valor in ativos_all:
+        t = tipo or "OUTROS"
+        valor_por_tipo_dict[t] = valor_por_tipo_dict.get(t, 0) + float(valor or 0)
+        count_por_tipo_dict[t] = count_por_tipo_dict.get(t, 0) + 1
+
+    soma_valor = sum(valor_por_tipo_dict.values())
+
     return {
         "total_ativos": total,
         "ativos_em_uso": em_uso,
         "ativos_estoque": estoque,
-        "valor_total": soma_valor
+        "ativos_manutencao": manutencao,
+        "ativos_descartados": descartados,
+        "garantia_vencida": garantia_vencida,
+        "garantia_vencendo_30d": garantia_vencendo_30d,
+        "valor_total": round(soma_valor, 2),
+        "valor_por_tipo": [
+            {"tipo": k, "valor": round(v, 2), "quantidade": count_por_tipo_dict[k]}
+            for k, v in sorted(valor_por_tipo_dict.items(), key=lambda x: -x[1])
+        ]
     }
 
 @app.get("/api/ativos")
@@ -338,6 +394,11 @@ def listar_ativos(
             "licenca_windows": a.licenca_windows,
             "licenca_office": a.licenca_office,
             "numero_chip": a.numero_chip,
+            "numero_serie": a.numero_serie,
+            "fornecedor": a.fornecedor,
+            "data_aquisicao": a.data_aquisicao.isoformat() if a.data_aquisicao else None,
+            "data_garantia": a.data_garantia.isoformat() if a.data_garantia else None,
+            "observacao": a.observacao,
             "valor": float(a.valor) if a.valor else None,
             "colaborador_id": a.colaborador_id,
             "colaborador": {
@@ -542,7 +603,11 @@ def bulk_import_ativos(items: List[AtivoBulkImportItem], db: Session = Depends(g
             "licenca_windows": item.licenca_windows,
             "licenca_office": item.licenca_office,
             "valor": item.valor,
-            "colaborador_id": colaborador_id
+            "colaborador_id": colaborador_id,
+            "numero_serie": item.numero_serie,
+            "fornecedor": item.fornecedor,
+            "data_aquisicao": item.data_aquisicao,
+            "data_garantia": item.data_garantia
         }
 
         if ativo:
@@ -706,6 +771,40 @@ def relatorio_ativos_por_tipo(db: Session = Depends(get_db)):
         report[tipo] = report.get(tipo, 0) + 1
 
     return [{"tipo": k, "quantidade": v} for k, v in report.items()]
+
+@app.get("/api/reports/garantia-status")
+def relatorio_garantia_status(db: Session = Depends(get_db)):
+    hoje = date.today()
+    trinta_dias = hoje + timedelta(days=30)
+
+    vencida = db.query(Ativo).filter(
+        Ativo.data_garantia != None,
+        Ativo.data_garantia < hoje,
+        Ativo.status != "Descartado"
+    ).count()
+
+    vencendo = db.query(Ativo).filter(
+        Ativo.data_garantia != None,
+        Ativo.data_garantia >= hoje,
+        Ativo.data_garantia <= trinta_dias
+    ).count()
+
+    ativa = db.query(Ativo).filter(
+        Ativo.data_garantia != None,
+        Ativo.data_garantia > trinta_dias
+    ).count()
+
+    sem_registro = db.query(Ativo).filter(
+        Ativo.data_garantia == None,
+        Ativo.status != "Descartado"
+    ).count()
+
+    return [
+        {"status": "Ativa", "quantidade": ativa},
+        {"status": "Vencendo (30d)", "quantidade": vencendo},
+        {"status": "Vencida", "quantidade": vencida},
+        {"status": "Sem Registro", "quantidade": sem_registro},
+    ]
 
 
 # --- SERVE FRONTEND REACT (produção) ---

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 import { 
-  LayoutDashboard, 
-  Monitor, 
-  Users, 
-  Plus, 
-  Search, 
+  LayoutDashboard,
+  Monitor,
+  Users,
+  Plus,
+  Search,
   Box,
   HardDrive,
   CheckCircle2,
@@ -29,7 +29,13 @@ import {
   ChevronRight,
   MessageSquare,
   Send,
-  Smartphone
+  Smartphone,
+  Calendar,
+  ShieldCheck,
+  ShieldOff,
+  Shield,
+  TrendingUp,
+  Wrench
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -75,7 +81,7 @@ const SafeChart = ({ children }) => {
 
 function App() {
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [stats, setStats] = useState({ total_ativos: 0, ativos_em_uso: 0, ativos_estoque: 0, valor_total: 0 });
+  const [stats, setStats] = useState({ total_ativos: 0, ativos_em_uso: 0, ativos_estoque: 0, ativos_manutencao: 0, ativos_descartados: 0, garantia_vencida: 0, garantia_vencendo_30d: 0, valor_total: 0, valor_por_tipo: [] });
   const [ativos, setAtivos] = useState([]);
   const [colaboradores, setColaboradores] = useState([]);
   const [setores, setSetores] = useState([]);
@@ -110,12 +116,17 @@ function App() {
     status: '',
     valor: '',
     colaborador_nome: '',
-    setor_nome: ''
+    setor_nome: '',
+    numero_serie: '',
+    fornecedor: '',
+    data_aquisicao: '',
+    data_garantia: ''
   });
 
   // Reports State
   const [reportValueBySector, setReportValueBySector] = useState([]);
   const [reportAssetsByType, setReportAssetsByType] = useState([]);
+  const [reportGarantiaStatus, setReportGarantiaStatus] = useState([]);
 
   // Filter State
   const [filterText, setFilterText] = useState('');
@@ -137,6 +148,10 @@ function App() {
     licenca_windows: '',
     licenca_office: '',
     numero_chip: '',
+    numero_serie: '',
+    fornecedor: '',
+    data_aquisicao: '',
+    data_garantia: '',
     observacao: '',
     valor: '',
     colaborador_id: ''
@@ -250,12 +265,14 @@ function App() {
       setSetores(resSetores.data);
 
       if (activeTab === 'relatorios') {
-        const [resValSector, resAssetsType] = await Promise.all([
+        const [resValSector, resAssetsType, resGarantia] = await Promise.all([
           axios.get(`${API_BASE_URL}/api/reports/valor-por-setor`),
-          axios.get(`${API_BASE_URL}/api/reports/ativos-por-tipo`)
+          axios.get(`${API_BASE_URL}/api/reports/ativos-por-tipo`),
+          axios.get(`${API_BASE_URL}/api/reports/garantia-status`)
         ]);
         setReportValueBySector(resValSector.data);
         setReportAssetsByType(resAssetsType.data);
+        setReportGarantiaStatus(resGarantia.data);
       }
     } catch (error) {
       console.error("Erro ao buscar dados da API:", error);
@@ -292,6 +309,10 @@ function App() {
       licenca_windows: ativo.licenca_windows || '',
       licenca_office: ativo.licenca_office || '',
       numero_chip: ativo.numero_chip || '',
+      numero_serie: ativo.numero_serie || '',
+      fornecedor: ativo.fornecedor || '',
+      data_aquisicao: ativo.data_aquisicao || '',
+      data_garantia: ativo.data_garantia || '',
       observacao: ativo.observacao || '',
       valor: ativo.valor || '',
       colaborador_id: ativo.colaborador_id || ''
@@ -308,13 +329,16 @@ function App() {
       if (payload.valor) payload.valor = parseFloat(payload.valor);
       else payload.valor = null;
       
+      if (!payload.data_aquisicao) payload.data_aquisicao = null;
+      if (!payload.data_garantia) payload.data_garantia = null;
       await axios.post(`${API_BASE_URL}/api/ativos`, payload);
       showToast("Equipamento cadastrado com sucesso!", "success");
       setIsModalOpen(false);
       setFormData({
         tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
         especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
-        licenca_windows: '', licenca_office: '', numero_chip: '', observacao: '', valor: '', colaborador_id: ''
+        licenca_windows: '', licenca_office: '', numero_chip: '', numero_serie: '', fornecedor: '',
+        data_aquisicao: '', data_garantia: '', observacao: '', valor: '', colaborador_id: ''
       });
       fetchData();
     } catch (error) {
@@ -330,6 +354,8 @@ function App() {
       else payload.colaborador_id = parseInt(payload.colaborador_id);
       if (payload.valor) payload.valor = parseFloat(payload.valor);
       else payload.valor = null;
+      if (!payload.data_aquisicao) payload.data_aquisicao = null;
+      if (!payload.data_garantia) payload.data_garantia = null;
 
       await axios.put(`${API_BASE_URL}/api/ativos/${editingAsset.id}`, payload);
       showToast("Equipamento atualizado com sucesso!", "success");
@@ -551,6 +577,27 @@ function App() {
         const setor = importMappings.setor_nome ? row[importMappings.setor_nome] : '';
         const local = importMappings.local_fisico ? row[importMappings.local_fisico] : 'Sede Central';
         const status = importMappings.status ? row[importMappings.status] : '';
+        const numero_serie = importMappings.numero_serie ? row[importMappings.numero_serie] : '';
+        const fornecedor = importMappings.fornecedor ? row[importMappings.fornecedor] : '';
+        const data_aquisicao_raw = importMappings.data_aquisicao ? row[importMappings.data_aquisicao] : null;
+        const data_garantia_raw = importMappings.data_garantia ? row[importMappings.data_garantia] : null;
+
+        // Converte datas: aceita número serial Excel, string BR (DD/MM/AAAA) ou ISO (AAAA-MM-DD)
+        const parseExcelDate = (val) => {
+          if (!val) return null;
+          if (typeof val === 'number') {
+            // Serial date do Excel — converte para JS Date
+            const d = new Date(Math.round((val - 25569) * 86400 * 1000));
+            return d.toISOString().split('T')[0];
+          }
+          const s = String(val).trim();
+          // DD/MM/AAAA
+          const brMatch = s.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+          if (brMatch) return `${brMatch[3]}-${brMatch[2]}-${brMatch[1]}`;
+          // AAAA-MM-DD já está no formato correto
+          if (/^\d{4}-\d{2}-\d{2}$/.test(s)) return s;
+          return null;
+        };
 
         // Limpeza e Parse de Valores Monetários do BRL
         let valor = null;
@@ -599,7 +646,11 @@ function App() {
           status: String(status || (colaborador ? 'Em Uso' : 'Estoque')).trim(),
           valor: isNaN(valor) ? null : valor,
           colaborador_nome: String(colaborador || '').trim(),
-          setor_nome: String(setor || '').trim()
+          setor_nome: String(setor || '').trim(),
+          numero_serie: String(numero_serie || '').trim() || null,
+          fornecedor: String(fornecedor || '').trim() || null,
+          data_aquisicao: parseExcelDate(data_aquisicao_raw),
+          data_garantia: parseExcelDate(data_garantia_raw)
         };
       }).filter(item => item.tag_patrimonio && item.tag_patrimonio.length > 2);
 
@@ -879,8 +930,32 @@ function App() {
           </div>
         ) : activeTab === 'dashboard' ? (
           <>
-            {/* KPI Cards Grid */}
-            <div className="stats-grid">
+            {/* Alertas críticos de garantia */}
+            {(stats.garantia_vencida > 0 || stats.garantia_vencendo_30d > 0) && (
+              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap'}}>
+                {stats.garantia_vencida > 0 && (
+                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '10px'}}>
+                    <ShieldOff size={20} color="#ef4444" style={{flexShrink: 0}} />
+                    <div>
+                      <div style={{fontWeight: '700', color: '#ef4444', fontSize: '0.9rem'}}>{stats.garantia_vencida} equipamento{stats.garantia_vencida > 1 ? 's' : ''} com garantia vencida</div>
+                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Verifique os ativos e acione o fornecedor ou planeje substituição.</div>
+                    </div>
+                  </div>
+                )}
+                {stats.garantia_vencendo_30d > 0 && (
+                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '10px'}}>
+                    <Shield size={20} color="var(--warning)" style={{flexShrink: 0}} />
+                    <div>
+                      <div style={{fontWeight: '700', color: 'var(--warning)', fontSize: '0.9rem'}}>{stats.garantia_vencendo_30d} equipamento{stats.garantia_vencendo_30d > 1 ? 's' : ''} com garantia vencendo em 30 dias</div>
+                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Acione a garantia antes do prazo para evitar custo extra.</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* KPI Cards Grid — 4 principais */}
+            <div className="stats-grid" style={{marginBottom: '1rem'}}>
               <div className="stat-card">
                 <div className="stat-label">Total de Ativos</div>
                 <div className="stat-value">{stats.total_ativos}</div>
@@ -897,38 +972,60 @@ function App() {
                 <HardDrive size={24} color="var(--warning)" style={{marginTop: 'auto'}} />
               </div>
               <div className="stat-card">
-                <div className="stat-label">Valor Total do Ativo</div>
-                <div className="stat-value">R$ {stats.valor_total.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                <FileText size={24} color="#8b5cf6" style={{marginTop: 'auto'}} />
+                <div className="stat-label">Valor Total do Inventário</div>
+                <div className="stat-value" style={{fontSize: '1.1rem'}}>R$ {(stats.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
+                <TrendingUp size={24} color="#8b5cf6" style={{marginTop: 'auto'}} />
+              </div>
+            </div>
+
+            {/* KPI Cards Grid — operacional */}
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem'}}>
+              <div className="stat-card" style={{borderColor: stats.ativos_manutencao > 0 ? 'rgba(239,68,68,0.3)' : undefined}}>
+                <div className="stat-label">Em Manutenção</div>
+                <div className="stat-value" style={{fontSize: '1.5rem', color: stats.ativos_manutencao > 0 ? '#ef4444' : 'var(--text-main)'}}>{stats.ativos_manutencao || 0}</div>
+                <Wrench size={20} color={stats.ativos_manutencao > 0 ? '#ef4444' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Descartados</div>
+                <div className="stat-value" style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{stats.ativos_descartados || 0}</div>
+                <Trash2 size={20} color="var(--text-muted)" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card" style={{borderColor: stats.garantia_vencida > 0 ? 'rgba(239,68,68,0.3)' : undefined}}>
+                <div className="stat-label">Garantia Vencida</div>
+                <div className="stat-value" style={{fontSize: '1.5rem', color: stats.garantia_vencida > 0 ? '#ef4444' : 'var(--success)'}}>{stats.garantia_vencida || 0}</div>
+                <ShieldOff size={20} color={stats.garantia_vencida > 0 ? '#ef4444' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card" style={{borderColor: stats.garantia_vencendo_30d > 0 ? 'rgba(245,158,11,0.3)' : undefined}}>
+                <div className="stat-label">Garantia Vencendo (30d)</div>
+                <div className="stat-value" style={{fontSize: '1.5rem', color: stats.garantia_vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{stats.garantia_vencendo_30d || 0}</div>
+                <Shield size={20} color={stats.garantia_vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
               </div>
             </div>
 
             <div className="dashboard-row">
+              {/* Gráfico Valor por Categoria */}
               <div className="chart-container">
-                <h3>Distribuição por Marca</h3>
+                <h3>Valor Total por Categoria (R$)</h3>
                 <div style={{ height: '300px' }}>
-                  {getBrandData().length > 0 ? (
+                  {(stats.valor_por_tipo || []).length > 0 ? (
                     <SafeChart>
-                      <PieChart>
-                        <Pie
-                          data={getBrandData()}
-                          cx="50%"
-                          cy="50%"
-                          innerRadius={60}
-                          outerRadius={80}
-                          paddingAngle={5}
-                          dataKey="value"
-                        >
-                          {getBrandData().map((entry, index) => (
+                      <BarChart data={stats.valor_por_tipo} margin={{ top: 10, right: 20, left: 40, bottom: 20 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis dataKey="tipo" stroke="#94a3b8" tick={{fontSize: 11}} />
+                        <YAxis stroke="#94a3b8" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+                        <Tooltip
+                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px' }}
+                          formatter={(val, name, props) => [
+                            `R$ ${Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+                            `Valor — ${props.payload.quantidade} unid.`
+                          ]}
+                        />
+                        <Bar dataKey="valor" radius={[4, 4, 0, 0]}>
+                          {(stats.valor_por_tipo || []).map((entry, index) => (
                             <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                           ))}
-                        </Pie>
-                        <Tooltip 
-                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px' }} 
-                          itemStyle={{ color: 'white' }}
-                        />
-                        <Legend />
-                      </PieChart>
+                        </Bar>
+                      </BarChart>
                     </SafeChart>
                   ) : (
                     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
@@ -944,21 +1041,22 @@ function App() {
                   <h2>Ativos Recentes</h2>
                   <button className="btn-primary" onClick={() => setActiveTab('ativos')}>Ver Todos</button>
                 </div>
-                
                 <div className="table-container">
                   <table>
                     <thead>
                       <tr>
                         <th>Tag</th>
                         <th>Equipamento</th>
+                        <th>Responsável</th>
                         <th>Status</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {ativos.slice(0, 5).map(ativo => (
+                      {ativos.slice(0, 8).map(ativo => (
                         <tr key={ativo.id} className="table-row-hover" onClick={() => handleOpenDrawer(ativo)}>
                           <td><strong style={{color: 'var(--accent)'}}>{ativo.tag_patrimonio}</strong></td>
-                          <td>{ativo.marca} {ativo.modelo}</td>
+                          <td style={{fontSize: '0.82rem'}}>{ativo.marca} {ativo.modelo}</td>
+                          <td style={{fontSize: '0.78rem', color: 'var(--text-muted)'}}>{ativo.colaborador?.nome || <span style={{fontStyle:'italic'}}>Disponível</span>}</td>
                           <td>
                             <span className={`status-badge status-${ativo.status.toLowerCase().replace(' ', '-')}`}>
                               {ativo.status}
@@ -1035,7 +1133,8 @@ function App() {
                 setFormData({
                   tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
                   especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
-                  licenca_windows: '', licenca_office: '', numero_chip: '', observacao: '', valor: '', colaborador_id: ''
+                  licenca_windows: '', licenca_office: '', numero_chip: '', numero_serie: '', fornecedor: '',
+                  data_aquisicao: '', data_garantia: '', observacao: '', valor: '', colaborador_id: ''
                 });
                 setIsModalOpen(true);
               }}>
@@ -1353,6 +1452,42 @@ function App() {
                             ))}
                           </select>
                         </div>
+                        <div className="form-group">
+                          <label>Número de Série</label>
+                          <select value={importMappings.numero_serie} onChange={e => setImportMappings({...importMappings, numero_serie: e.target.value})}>
+                            <option value="">-- Ignorar --</option>
+                            {Object.keys(parsedData[0]).filter(k => k !== 'id_temp').map(k => (
+                              <option key={k} value={k}>{k}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Fornecedor</label>
+                          <select value={importMappings.fornecedor} onChange={e => setImportMappings({...importMappings, fornecedor: e.target.value})}>
+                            <option value="">-- Ignorar --</option>
+                            {Object.keys(parsedData[0]).filter(k => k !== 'id_temp').map(k => (
+                              <option key={k} value={k}>{k}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Data de Aquisição</label>
+                          <select value={importMappings.data_aquisicao} onChange={e => setImportMappings({...importMappings, data_aquisicao: e.target.value})}>
+                            <option value="">-- Ignorar --</option>
+                            {Object.keys(parsedData[0]).filter(k => k !== 'id_temp').map(k => (
+                              <option key={k} value={k}>{k}</option>
+                            ))}
+                          </select>
+                        </div>
+                        <div className="form-group">
+                          <label>Garantia Até</label>
+                          <select value={importMappings.data_garantia} onChange={e => setImportMappings({...importMappings, data_garantia: e.target.value})}>
+                            <option value="">-- Ignorar --</option>
+                            {Object.keys(parsedData[0]).filter(k => k !== 'id_temp').map(k => (
+                              <option key={k} value={k}>{k}</option>
+                            ))}
+                          </select>
+                        </div>
                       </div>
 
                       <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1.5rem', borderTop: '1px solid var(--border)', paddingTop: '1.5rem'}}>
@@ -1450,6 +1585,42 @@ function App() {
                 )}
               </div>
             </div>
+
+            <div className="chart-card">
+              <h3>Status de Garantia dos Equipamentos</h3>
+              <div style={{ height: '300px' }}>
+                {reportGarantiaStatus.some(r => r.quantidade > 0) ? (
+                  <SafeChart>
+                    <PieChart>
+                      <Pie
+                        data={reportGarantiaStatus.filter(r => r.quantidade > 0)}
+                        dataKey="quantidade"
+                        nameKey="status"
+                        cx="50%" cy="50%"
+                        innerRadius={55}
+                        outerRadius={80}
+                        paddingAngle={4}
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {reportGarantiaStatus.filter(r => r.quantidade > 0).map((entry) => {
+                          const colorMap = { 'Ativa': '#22c55e', 'Vencendo (30d)': '#f59e0b', 'Vencida': '#ef4444', 'Sem Registro': '#64748b' };
+                          return <Cell key={entry.status} fill={colorMap[entry.status] || '#8b5cf6'} />;
+                        })}
+                      </Pie>
+                      <Tooltip
+                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px' }}
+                        formatter={(val, name) => [`${val} equipamento${val !== 1 ? 's' : ''}`, name]}
+                      />
+                      <Legend />
+                    </PieChart>
+                  </SafeChart>
+                ) : (
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'var(--text-muted)' }}>
+                    Nenhum dado de garantia cadastrado. Preencha as datas de garantia nos ativos.
+                  </div>
+                )}
+              </div>
+            </div>
           </div>
         )}
 
@@ -1513,6 +1684,28 @@ function App() {
                     <input value={formData.numero_chip} onChange={e => setFormData({...formData, numero_chip: e.target.value})} placeholder="Ex: (11) 99999-0000" />
                   </div>
                 )}
+
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Número de Série</label>
+                    <input value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} placeholder="Ex: SN-ABC123456" />
+                  </div>
+                  <div className="form-group">
+                    <label>Fornecedor</label>
+                    <input value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} placeholder="Ex: Dell Brasil Ltda" />
+                  </div>
+                </div>
+
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Data de Aquisição</label>
+                    <input type="date" value={formData.data_aquisicao} onChange={e => setFormData({...formData, data_aquisicao: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Garantia Até</label>
+                    <input type="date" value={formData.data_garantia} onChange={e => setFormData({...formData, data_garantia: e.target.value})} />
+                  </div>
+                </div>
 
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
@@ -1619,6 +1812,28 @@ function App() {
                     <input value={formData.numero_chip} onChange={e => setFormData({...formData, numero_chip: e.target.value})} placeholder="Ex: (11) 99999-0000" />
                   </div>
                 )}
+
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Número de Série</label>
+                    <input value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} placeholder="Ex: SN-ABC123456" />
+                  </div>
+                  <div className="form-group">
+                    <label>Fornecedor</label>
+                    <input value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} placeholder="Ex: Dell Brasil Ltda" />
+                  </div>
+                </div>
+
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Data de Aquisição</label>
+                    <input type="date" value={formData.data_aquisicao} onChange={e => setFormData({...formData, data_aquisicao: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Garantia Até</label>
+                    <input type="date" value={formData.data_garantia} onChange={e => setFormData({...formData, data_garantia: e.target.value})} />
+                  </div>
+                </div>
 
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
@@ -1812,8 +2027,62 @@ function App() {
                       <span className="label">Licença Office</span>
                       <span className="value" style={{fontSize: '0.85rem', fontWeight: '500'}}>{selectedAsset.licenca_office || '-'}</span>
                     </div>
+                    {selectedAsset.numero_serie && (
+                      <div className="info-item">
+                        <span className="label">Número de Série</span>
+                        <span className="value" style={{fontSize: '0.82rem', fontFamily: 'monospace', color: 'var(--accent)'}}>{selectedAsset.numero_serie}</span>
+                      </div>
+                    )}
+                    {selectedAsset.fornecedor && (
+                      <div className="info-item">
+                        <span className="label">Fornecedor</span>
+                        <span className="value" style={{fontSize: '0.85rem'}}>{selectedAsset.fornecedor}</span>
+                      </div>
+                    )}
                   </div>
                 </div>
+
+                {/* Ciclo de Vida */}
+                {(selectedAsset.data_aquisicao || selectedAsset.data_garantia) && (
+                  <div className="drawer-section">
+                    <h4>Ciclo de Vida</h4>
+                    <div className="info-grid">
+                      {selectedAsset.data_aquisicao && (
+                        <div className="info-item">
+                          <span className="label">Data de Aquisição</span>
+                          <span className="value" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                            <Calendar size={12} color="var(--accent)" />
+                            {new Date(selectedAsset.data_aquisicao + 'T00:00:00').toLocaleDateString('pt-BR')}
+                          </span>
+                        </div>
+                      )}
+                      {selectedAsset.data_garantia && (() => {
+                        const hoje = new Date(); hoje.setHours(0,0,0,0);
+                        const gar = new Date(selectedAsset.data_garantia + 'T00:00:00');
+                        const diff = Math.floor((gar - hoje) / 86400000);
+                        const badge = diff < 0
+                          ? { text: 'Vencida', color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)', icon: <ShieldOff size={12} /> }
+                          : diff <= 30
+                          ? { text: `Vencendo em ${diff}d`, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)', icon: <Shield size={12} /> }
+                          : { text: 'Ativa', color: '#22c55e', bg: 'rgba(34,197,94,0.12)', border: 'rgba(34,197,94,0.3)', icon: <ShieldCheck size={12} /> };
+                        return (
+                          <div className="info-item">
+                            <span className="label">Garantia Até</span>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.35rem'}}>
+                              <span className="value" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                                <Calendar size={12} color="var(--accent)" />
+                                {gar.toLocaleDateString('pt-BR')}
+                              </span>
+                              <span style={{display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: '700', padding: '2px 8px', borderRadius: '999px', backgroundColor: badge.bg, color: badge.color, border: `1px solid ${badge.border}`, width: 'fit-content'}}>
+                                {badge.icon}{badge.text}
+                              </span>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
 
                 {/* Colaborador Atribuído */}
                 <div className="drawer-section">
