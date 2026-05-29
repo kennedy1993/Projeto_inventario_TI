@@ -1076,7 +1076,7 @@ function App() {
                 <colgroup>
                   <col style={{width: '8%'}} />
                   <col style={{width: '6%'}} />
-                  <col style={{width: '12%'}} />
+                  {filterTipo === 'CELULAR' && <col style={{width: '12%'}} />}
                   <col style={{width: '14%'}} />
                   <col style={{width: '11%'}} />
                   <col style={{width: '9%'}} />
@@ -1090,12 +1090,14 @@ function App() {
                   <tr>
                     <th onClick={() => requestSort('tag_patrimonio')}>TAG {sortConfig.key === 'tag_patrimonio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('tipo')}>Tipo {sortConfig.key === 'tipo' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
-                    <th>
-                      <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
-                        <Smartphone size={13} />
-                        Chip
-                      </div>
-                    </th>
+                    {filterTipo === 'CELULAR' && (
+                      <th>
+                        <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                          <Smartphone size={13} />
+                          Chip
+                        </div>
+                      </th>
+                    )}
                     <th onClick={() => requestSort('marca')}>Equipamento {sortConfig.key === 'marca' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('colaborador')}>Colaborador {sortConfig.key === 'colaborador' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th>Setor</th>
@@ -1113,20 +1115,18 @@ function App() {
                       <td>
                         <span className="type-badge">{ativo.tipo || 'N/A'}</span>
                       </td>
-                      <td style={{whiteSpace: 'nowrap'}}>
-                        {ativo.tipo === 'CELULAR' ? (
-                          ativo.numero_chip ? (
+                      {filterTipo === 'CELULAR' && (
+                        <td style={{whiteSpace: 'nowrap'}}>
+                          {ativo.numero_chip ? (
                             <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
                               <Smartphone size={13} color="var(--accent)" style={{flexShrink: 0}} />
                               <span style={{fontSize: '0.85rem', fontWeight: '500', color: 'var(--text-main)', whiteSpace: 'nowrap'}}>{ativo.numero_chip}</span>
                             </div>
                           ) : (
                             <span style={{fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic'}}>Não cadastrado</span>
-                          )
-                        ) : (
-                          <span style={{color: 'var(--text-muted)'}}>—</span>
-                        )}
-                      </td>
+                          )}
+                        </td>
+                      )}
                       <td>
                         <div style={{fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.marca} {ativo.modelo}</div>
                         <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.especificacoes}</div>
