@@ -1783,7 +1783,7 @@ function App() {
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
                     <label>TAG Patrimônio *</label>
-                    <input required value={formData.tag_patrimonio} onChange={e => setFormData({...formData, tag_patrimonio: e.target.value})} />
+                    <input value={formData.tag_patrimonio} readOnly style={{cursor: 'not-allowed', opacity: 0.6}} />
                   </div>
                   <div className="form-group">
                     <label>Tipo de Equipamento</label>
