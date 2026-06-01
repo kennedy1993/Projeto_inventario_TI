@@ -1324,6 +1324,8 @@ function App() {
                 </thead>
                 <tbody>
                   {colaboradores
+                    .slice()
+                    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR', { sensitivity: 'base' }))
                     .filter(c => `${c.nome} ${c.setor}`.toLowerCase().includes(filterColab.toLowerCase()))
                     .map(colab => (
                       <tr key={colab.id}>
