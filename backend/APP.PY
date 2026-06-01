@@ -410,6 +410,34 @@ def listar_ativos(
         } for a in ativos
     ]
 
+# Rota para gerar a próxima TAG de patrimônio com base no tipo do equipamento
+@app.get("/api/ativos/next-tag")
+def obter_proxima_tag(tipo: str = "NOTEBOOK", db: Session = Depends(get_db)):
+    prefixos = {
+        "NOTEBOOK":   "NTB",
+        "MONITOR":    "MON",
+        "DESKTOP":    "DSK",
+        "CELULAR":    "CEL",
+        "IMPRESSORA": "IMP",
+        "OUTROS":     "OUT",
+    }
+    prefixo = prefixos.get(tipo.upper(), "OUT")
+    pattern = f"{prefixo}-AVAN-%"
+
+    tags = db.query(Ativo.tag_patrimonio).filter(
+        Ativo.tag_patrimonio.like(pattern)
+    ).all()
+
+    maior_num = 0
+    for (tag,) in tags:
+        partes = tag.split("-")
+        if len(partes) == 3 and partes[2].isdigit():
+            maior_num = max(maior_num, int(partes[2]))
+
+    proxima = maior_num + 1
+    return {"next_tag": f"{prefixo}-AVAN-{proxima:03d}"}
+
+
 # Rota para registar um novo equipamento no banco
 @app.post("/api/ativos")
 def criar_ativo(ativo: AtivoCreate, db: Session = Depends(get_db)):

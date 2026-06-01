@@ -320,6 +320,15 @@ function App() {
     setIsEditModalOpen(true);
   };
 
+  const fetchNextTag = async (tipo) => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/ativos/next-tag?tipo=${tipo}`);
+      return res.data.next_tag;
+    } catch {
+      return '';
+    }
+  };
+
   const handleCreateAtivo = async (e) => {
     e.preventDefault();
     try {
@@ -1129,9 +1138,10 @@ function App() {
                 </button>
               </div>
 
-              <button className="btn-primary gradient-btn" onClick={() => {
+              <button className="btn-primary gradient-btn" onClick={async () => {
+                const nextTag = await fetchNextTag('NOTEBOOK');
                 setFormData({
-                  tag_patrimonio: '', tipo: 'NOTEBOOK', marca: '', modelo: '',
+                  tag_patrimonio: nextTag, tipo: 'NOTEBOOK', marca: '', modelo: '',
                   especificacoes: '', local_fisico: 'Sede Central', status: 'Estoque',
                   licenca_windows: '', licenca_office: '', numero_chip: '', numero_serie: '', fornecedor: '',
                   data_aquisicao: '', data_garantia: '', observacao: '', valor: '', colaborador_id: ''
@@ -1637,12 +1647,19 @@ function App() {
               <form onSubmit={handleCreateAtivo}>
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
-                    <label>TAG Patrimônio *</label>
-                    <input required value={formData.tag_patrimonio} onChange={e => setFormData({...formData, tag_patrimonio: e.target.value})} placeholder="Ex: AVN-123" />
+                    <label style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                      TAG Patrimônio *
+                      <span style={{fontSize: '0.7rem', background: 'var(--accent)', color: '#fff', borderRadius: '4px', padding: '1px 6px', fontWeight: '600', letterSpacing: '0.02em'}}>AUTO</span>
+                    </label>
+                    <input required value={formData.tag_patrimonio} onChange={e => setFormData({...formData, tag_patrimonio: e.target.value})} placeholder="Gerado automaticamente..." />
                   </div>
                   <div className="form-group">
                     <label>Tipo de Equipamento</label>
-                    <select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})}>
+                    <select value={formData.tipo} onChange={async e => {
+                      const novoTipo = e.target.value;
+                      const nextTag = await fetchNextTag(novoTipo);
+                      setFormData({...formData, tipo: novoTipo, tag_patrimonio: nextTag});
+                    }}>
                       <option value="NOTEBOOK">NOTEBOOK</option>
                       <option value="MONITOR">MONITOR</option>
                       <option value="DESKTOP">DESKTOP</option>
