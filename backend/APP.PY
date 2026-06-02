@@ -18,7 +18,7 @@ load_dotenv()
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import create_engine, Column, Integer, String, Numeric, ForeignKey, Date, DateTime, or_
+from sqlalchemy import create_engine, Column, Integer, String, Numeric, ForeignKey, Date, DateTime, or_, Boolean
 from sqlalchemy.orm import declarative_base
 from sqlalchemy.orm import sessionmaker, Session, relationship, joinedload
 from pydantic import BaseModel, ConfigDict, field_validator
@@ -98,6 +98,30 @@ class HistoricoAtivo(Base):
 
     ativo = relationship("Ativo", back_populates="historico")
     colaborador = relationship("Colaborador")
+
+class Contrato(Base):
+    __tablename__ = "contratos"
+    id = Column(Integer, primary_key=True, index=True)
+    numero_contrato = Column(String, nullable=True)
+    titulo = Column(String, nullable=False)
+    tipo = Column(String, nullable=False)
+    fornecedor = Column(String, nullable=False)
+    contato_fornecedor = Column(String, nullable=True)
+    telefone_fornecedor = Column(String, nullable=True)
+    email_fornecedor = Column(String, nullable=True)
+    data_inicio = Column(Date, nullable=True)
+    data_vencimento = Column(Date, nullable=False)
+    valor_mensal = Column(Numeric(15, 2), nullable=True)
+    valor_anual = Column(Numeric(15, 2), nullable=True)
+    valor_total = Column(Numeric(15, 2), nullable=True)
+    status = Column(String, default="Ativo")
+    descricao = Column(String, nullable=True)
+    observacoes = Column(String, nullable=True)
+    responsavel_interno = Column(String, nullable=True)
+    renovacao_automatica = Column(Boolean, default=False)
+    prazo_aviso_dias = Column(Integer, default=30)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
 # Criar as tabelas no banco de dados automaticamente (após as tabelas estarem definidas no script Python)
 Base.metadata.create_all(bind=engine)
@@ -236,6 +260,47 @@ class SetorResponse(BaseModel):
     id: int
     nome: str
     model_config = ConfigDict(from_attributes=True)
+
+
+class ContratoCreate(BaseModel):
+    numero_contrato: Optional[str] = None
+    titulo: str
+    tipo: str
+    fornecedor: str
+    contato_fornecedor: Optional[str] = None
+    telefone_fornecedor: Optional[str] = None
+    email_fornecedor: Optional[str] = None
+    data_inicio: Optional[date] = None
+    data_vencimento: date
+    valor_mensal: Optional[float] = None
+    valor_anual: Optional[float] = None
+    valor_total: Optional[float] = None
+    status: Optional[str] = "Ativo"
+    descricao: Optional[str] = None
+    observacoes: Optional[str] = None
+    responsavel_interno: Optional[str] = None
+    renovacao_automatica: Optional[bool] = False
+    prazo_aviso_dias: Optional[int] = 30
+
+class ContratoUpdate(BaseModel):
+    numero_contrato: Optional[str] = None
+    titulo: Optional[str] = None
+    tipo: Optional[str] = None
+    fornecedor: Optional[str] = None
+    contato_fornecedor: Optional[str] = None
+    telefone_fornecedor: Optional[str] = None
+    email_fornecedor: Optional[str] = None
+    data_inicio: Optional[date] = None
+    data_vencimento: Optional[date] = None
+    valor_mensal: Optional[float] = None
+    valor_anual: Optional[float] = None
+    valor_total: Optional[float] = None
+    status: Optional[str] = None
+    descricao: Optional[str] = None
+    observacoes: Optional[str] = None
+    responsavel_interno: Optional[str] = None
+    renovacao_automatica: Optional[bool] = None
+    prazo_aviso_dias: Optional[int] = None
 
 
 import logging
@@ -774,7 +839,169 @@ def deletar_colaborador(colaborador_id: int, db: Session = Depends(get_db)):
 def listar_setores(db: Session = Depends(get_db)):
     return db.query(Setor).all()
 
-# --- 6. ENDPOINTS DE RELATÓRIOS ---
+# --- 6. ENDPOINTS DE CONTRATOS DE TI ---
+
+def _serializar_contrato(c: Contrato) -> dict:
+    return {
+        "id": c.id,
+        "numero_contrato": c.numero_contrato,
+        "titulo": c.titulo,
+        "tipo": c.tipo,
+        "fornecedor": c.fornecedor,
+        "contato_fornecedor": c.contato_fornecedor,
+        "telefone_fornecedor": c.telefone_fornecedor,
+        "email_fornecedor": c.email_fornecedor,
+        "data_inicio": c.data_inicio.isoformat() if c.data_inicio else None,
+        "data_vencimento": c.data_vencimento.isoformat() if c.data_vencimento else None,
+        "valor_mensal": float(c.valor_mensal) if c.valor_mensal else None,
+        "valor_anual": float(c.valor_anual) if c.valor_anual else None,
+        "valor_total": float(c.valor_total) if c.valor_total else None,
+        "status": c.status,
+        "descricao": c.descricao,
+        "observacoes": c.observacoes,
+        "responsavel_interno": c.responsavel_interno,
+        "renovacao_automatica": c.renovacao_automatica,
+        "prazo_aviso_dias": c.prazo_aviso_dias,
+        "created_at": c.created_at.isoformat() if c.created_at else None,
+        "updated_at": c.updated_at.isoformat() if c.updated_at else None,
+    }
+
+def _auto_vencer_contratos(db: Session):
+    hoje = date.today()
+    expirados = db.query(Contrato).filter(
+        Contrato.status == "Ativo",
+        Contrato.data_vencimento < hoje
+    ).all()
+    for c in expirados:
+        c.status = "Vencido"
+    if expirados:
+        db.commit()
+
+@app.get("/api/contratos/stats")
+def stats_contratos(db: Session = Depends(get_db)):
+    _auto_vencer_contratos(db)
+    hoje = date.today()
+    trinta_dias = hoje + timedelta(days=30)
+    sessenta_dias = hoje + timedelta(days=60)
+
+    total = db.query(Contrato).count()
+    ativos = db.query(Contrato).filter(Contrato.status == "Ativo").count()
+    vencidos = db.query(Contrato).filter(Contrato.status == "Vencido").count()
+    cancelados = db.query(Contrato).filter(Contrato.status == "Cancelado").count()
+    em_renovacao = db.query(Contrato).filter(Contrato.status == "Em Renovação").count()
+
+    vencendo_30d = db.query(Contrato).filter(
+        Contrato.status == "Ativo",
+        Contrato.data_vencimento >= hoje,
+        Contrato.data_vencimento <= trinta_dias
+    ).count()
+
+    vencendo_60d = db.query(Contrato).filter(
+        Contrato.status == "Ativo",
+        Contrato.data_vencimento >= hoje,
+        Contrato.data_vencimento <= sessenta_dias
+    ).count()
+
+    contratos_ativos_list = db.query(Contrato).filter(Contrato.status == "Ativo").all()
+    valor_anual_total = sum(
+        float(c.valor_anual or (float(c.valor_mensal) * 12 if c.valor_mensal else 0))
+        for c in contratos_ativos_list
+    )
+
+    return {
+        "total": total,
+        "ativos": ativos,
+        "vencidos": vencidos,
+        "cancelados": cancelados,
+        "em_renovacao": em_renovacao,
+        "vencendo_30d": vencendo_30d,
+        "vencendo_60d": vencendo_60d,
+        "valor_anual_total": round(valor_anual_total, 2),
+    }
+
+@app.get("/api/contratos")
+def listar_contratos(
+    status: Optional[str] = None,
+    tipo: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    _auto_vencer_contratos(db)
+    query = db.query(Contrato)
+
+    if status and status != "Todos":
+        query = query.filter(Contrato.status == status)
+    if tipo and tipo != "Todos":
+        query = query.filter(Contrato.tipo == tipo)
+    if search:
+        query = query.filter(or_(
+            Contrato.titulo.ilike(f"%{search}%"),
+            Contrato.fornecedor.ilike(f"%{search}%"),
+            Contrato.numero_contrato.ilike(f"%{search}%"),
+            Contrato.responsavel_interno.ilike(f"%{search}%"),
+        ))
+
+    contratos = query.order_by(Contrato.data_vencimento.asc()).all()
+    return [_serializar_contrato(c) for c in contratos]
+
+@app.post("/api/contratos")
+def criar_contrato(contrato: ContratoCreate, db: Session = Depends(get_db)):
+    hoje = date.today()
+    status_final = contrato.status or "Ativo"
+    if contrato.data_vencimento < hoje and status_final == "Ativo":
+        status_final = "Vencido"
+
+    novo = Contrato(
+        numero_contrato=contrato.numero_contrato,
+        titulo=contrato.titulo,
+        tipo=contrato.tipo,
+        fornecedor=contrato.fornecedor,
+        contato_fornecedor=contrato.contato_fornecedor,
+        telefone_fornecedor=contrato.telefone_fornecedor,
+        email_fornecedor=contrato.email_fornecedor,
+        data_inicio=contrato.data_inicio,
+        data_vencimento=contrato.data_vencimento,
+        valor_mensal=contrato.valor_mensal,
+        valor_anual=contrato.valor_anual,
+        valor_total=contrato.valor_total,
+        status=status_final,
+        descricao=contrato.descricao,
+        observacoes=contrato.observacoes,
+        responsavel_interno=contrato.responsavel_interno,
+        renovacao_automatica=contrato.renovacao_automatica or False,
+        prazo_aviso_dias=contrato.prazo_aviso_dias or 30,
+    )
+    db.add(novo)
+    db.commit()
+    db.refresh(novo)
+    return _serializar_contrato(novo)
+
+@app.put("/api/contratos/{id}")
+def atualizar_contrato(id: int, data: ContratoUpdate, db: Session = Depends(get_db)):
+    contrato = db.query(Contrato).filter(Contrato.id == id).first()
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado")
+
+    update_data = data.dict(exclude_unset=True)
+    for key, value in update_data.items():
+        setattr(contrato, key, value)
+    contrato.updated_at = datetime.now()
+
+    db.commit()
+    db.refresh(contrato)
+    return _serializar_contrato(contrato)
+
+@app.delete("/api/contratos/{id}")
+def deletar_contrato(id: int, db: Session = Depends(get_db)):
+    contrato = db.query(Contrato).filter(Contrato.id == id).first()
+    if not contrato:
+        raise HTTPException(status_code=404, detail="Contrato não encontrado")
+    db.delete(contrato)
+    db.commit()
+    return {"message": "Contrato excluído com sucesso"}
+
+
+# --- 7. ENDPOINTS DE RELATÓRIOS ---
 
 @app.get("/api/reports/valor-por-setor")
 def relatorio_valor_por_setor(db: Session = Depends(get_db)):

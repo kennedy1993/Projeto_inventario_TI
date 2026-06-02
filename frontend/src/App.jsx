@@ -35,7 +35,13 @@ import {
   ShieldOff,
   Shield,
   TrendingUp,
-  Wrench
+  Wrench,
+  ScrollText,
+  Building2,
+  Phone,
+  CalendarX2,
+  BadgeCheck,
+  RefreshCw
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -168,6 +174,34 @@ function App() {
     status: 'Ativo'
   });
 
+  // --- CONTRATOS TI STATE ---
+  const [contratos, setContratos] = useState([]);
+  const [contratoStats, setContratoStats] = useState({
+    total: 0, ativos: 0, vencidos: 0, cancelados: 0,
+    em_renovacao: 0, vencendo_30d: 0, vencendo_60d: 0, valor_anual_total: 0
+  });
+  const [isContratoModalOpen, setIsContratoModalOpen] = useState(false);
+  const [isContratoEditModalOpen, setIsContratoEditModalOpen] = useState(false);
+  const [editingContrato, setEditingContrato] = useState(null);
+  const [filterContratoText, setFilterContratoText] = useState('');
+  const [filterContratoStatus, setFilterContratoStatus] = useState('Todos');
+  const [filterContratoTipo, setFilterContratoTipo] = useState('Todos');
+
+  const CONTRATO_TIPOS = [
+    'Licença de Software', 'Suporte Técnico', 'Manutenção Preventiva',
+    'Serviço Cloud', 'Telecomunicações', 'Hardware/Equipamento', 'Consultoria', 'Outro'
+  ];
+
+  const contratoFormDefault = {
+    numero_contrato: '', titulo: '', tipo: 'Licença de Software',
+    fornecedor: '', contato_fornecedor: '', telefone_fornecedor: '',
+    email_fornecedor: '', data_inicio: '', data_vencimento: '',
+    valor_mensal: '', valor_anual: '', valor_total: '',
+    status: 'Ativo', descricao: '', observacoes: '',
+    responsavel_interno: '', renovacao_automatica: false, prazo_aviso_dias: 30
+  };
+  const [contratoFormData, setContratoFormData] = useState(contratoFormDefault);
+
   // Chat IA State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -273,6 +307,15 @@ function App() {
         setReportValueBySector(resValSector.data);
         setReportAssetsByType(resAssetsType.data);
         setReportGarantiaStatus(resGarantia.data);
+      }
+
+      if (activeTab === 'contratos') {
+        const [resContratos, resContratoStats] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/contratos`),
+          axios.get(`${API_BASE_URL}/api/contratos/stats`)
+        ]);
+        setContratos(resContratos.data);
+        setContratoStats(resContratoStats.data);
       }
     } catch (error) {
       console.error("Erro ao buscar dados da API:", error);
@@ -388,6 +431,111 @@ function App() {
     } catch (error) {
       showToast("Erro ao excluir equipamento", "error");
     }
+  };
+
+  // --- CRUD CONTRATOS ---
+
+  const handleCreateContrato = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...contratoFormData };
+      if (!payload.data_inicio) payload.data_inicio = null;
+      if (!payload.data_vencimento) { showToast("Data de vencimento é obrigatória", "error"); return; }
+      ['valor_mensal', 'valor_anual', 'valor_total'].forEach(k => {
+        payload[k] = payload[k] ? parseFloat(payload[k]) : null;
+      });
+      payload.prazo_aviso_dias = parseInt(payload.prazo_aviso_dias) || 30;
+      await axios.post(`${API_BASE_URL}/api/contratos`, payload);
+      showToast("Contrato cadastrado com sucesso!", "success");
+      setIsContratoModalOpen(false);
+      setContratoFormData(contratoFormDefault);
+      fetchData();
+    } catch (error) {
+      showToast(error.response?.data?.detail || "Erro ao criar contrato", "error");
+    }
+  };
+
+  const handleUpdateContrato = async (e) => {
+    e.preventDefault();
+    try {
+      const payload = { ...contratoFormData };
+      if (!payload.data_inicio) payload.data_inicio = null;
+      ['valor_mensal', 'valor_anual', 'valor_total'].forEach(k => {
+        payload[k] = payload[k] ? parseFloat(payload[k]) : null;
+      });
+      payload.prazo_aviso_dias = parseInt(payload.prazo_aviso_dias) || 30;
+      await axios.put(`${API_BASE_URL}/api/contratos/${editingContrato.id}`, payload);
+      showToast("Contrato atualizado com sucesso!", "success");
+      setIsContratoEditModalOpen(false);
+      setEditingContrato(null);
+      fetchData();
+    } catch (error) {
+      showToast(error.response?.data?.detail || "Erro ao atualizar contrato", "error");
+    }
+  };
+
+  const handleDeleteContrato = async (id) => {
+    if (!window.confirm("Tem certeza que deseja excluir este contrato permanentemente?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/api/contratos/${id}`);
+      showToast("Contrato excluído com sucesso!", "success");
+      fetchData();
+    } catch (error) {
+      showToast("Erro ao excluir contrato", "error");
+    }
+  };
+
+  const openEditContrato = (c) => {
+    setEditingContrato(c);
+    setContratoFormData({
+      numero_contrato: c.numero_contrato || '',
+      titulo: c.titulo || '',
+      tipo: c.tipo || 'Licença de Software',
+      fornecedor: c.fornecedor || '',
+      contato_fornecedor: c.contato_fornecedor || '',
+      telefone_fornecedor: c.telefone_fornecedor || '',
+      email_fornecedor: c.email_fornecedor || '',
+      data_inicio: c.data_inicio || '',
+      data_vencimento: c.data_vencimento || '',
+      valor_mensal: c.valor_mensal ?? '',
+      valor_anual: c.valor_anual ?? '',
+      valor_total: c.valor_total ?? '',
+      status: c.status || 'Ativo',
+      descricao: c.descricao || '',
+      observacoes: c.observacoes || '',
+      responsavel_interno: c.responsavel_interno || '',
+      renovacao_automatica: c.renovacao_automatica || false,
+      prazo_aviso_dias: c.prazo_aviso_dias || 30
+    });
+    setIsContratoEditModalOpen(true);
+  };
+
+  const exportContratosToExcel = () => {
+    const dataToExport = filteredContratos.map(c => ({
+      'Nº Contrato': c.numero_contrato || '',
+      'Título': c.titulo || '',
+      'Tipo': c.tipo || '',
+      'Fornecedor': c.fornecedor || '',
+      'Contato Fornecedor': c.contato_fornecedor || '',
+      'Telefone': c.telefone_fornecedor || '',
+      'Email Fornecedor': c.email_fornecedor || '',
+      'Data Início': c.data_inicio ? new Date(c.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      'Data Vencimento': c.data_vencimento ? new Date(c.data_vencimento + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      'Valor Mensal (R$)': c.valor_mensal != null ? Number(c.valor_mensal).toFixed(2).replace('.', ',') : '',
+      'Valor Anual (R$)': c.valor_anual != null ? Number(c.valor_anual).toFixed(2).replace('.', ',') : '',
+      'Valor Total (R$)': c.valor_total != null ? Number(c.valor_total).toFixed(2).replace('.', ',') : '',
+      'Status': c.status || '',
+      'Responsável Interno': c.responsavel_interno || '',
+      'Renovação Auto': c.renovacao_automatica ? 'Sim' : 'Não',
+      'Descrição': c.descricao || '',
+      'Observações': c.observacoes || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(dataToExport);
+    ws['!cols'] = [14, 30, 22, 28, 22, 16, 28, 14, 14, 16, 16, 16, 16, 22, 10, 35, 35].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Contratos TI");
+    XLSX.writeFile(wb, 'Contratos_TI_Avanco.xlsx');
+    showToast(`Exportação concluída — ${filteredContratos.length} contratos!`, "success");
   };
 
   // --- CRUD COLABORADORES ---
@@ -874,6 +1022,16 @@ function App() {
     setSortConfig({ key, direction });
   };
 
+  const filteredContratos = React.useMemo(() => {
+    return contratos.filter(c => {
+      const searchStr = `${c.titulo} ${c.fornecedor} ${c.numero_contrato || ''} ${c.responsavel_interno || ''}`.toLowerCase();
+      const matchesSearch = searchStr.includes(filterContratoText.toLowerCase());
+      const matchesStatus = filterContratoStatus === 'Todos' || c.status === filterContratoStatus;
+      const matchesTipo = filterContratoTipo === 'Todos' || c.tipo === filterContratoTipo;
+      return matchesSearch && matchesStatus && matchesTipo;
+    });
+  }, [contratos, filterContratoText, filterContratoStatus, filterContratoTipo]);
+
   return (
     <div className="app-container">
       {/* Sidebar de Navegação Lateral */}
@@ -910,12 +1068,19 @@ function App() {
             <UploadCloud size={20} />
             Importar Excel
           </div>
-          <div 
+          <div
             className={`nav-item ${activeTab === 'relatorios' ? 'active' : ''}`}
             onClick={() => setActiveTab('relatorios')}
           >
             <BarChart3 size={20} />
             Relatórios
+          </div>
+          <div
+            className={`nav-item ${activeTab === 'contratos' ? 'active' : ''}`}
+            onClick={() => setActiveTab('contratos')}
+          >
+            <ScrollText size={20} />
+            Contratos TI
           </div>
         </nav>
       </aside>
@@ -927,7 +1092,8 @@ function App() {
             <h1>
               {activeTab === 'dashboard' ? 'Dashboard de Inventário' :
                activeTab === 'colaboradores' ? 'Gestão de Colaboradores' :
-               activeTab === 'importar' ? 'Importação Inteligente Excel' : 'Relatórios Estratégicos'}
+               activeTab === 'importar' ? 'Importação Inteligente Excel' :
+               activeTab === 'contratos' ? 'Contratos de T.I.' : 'Relatórios Estratégicos'}
             </h1>
             <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
           </header>
@@ -1543,6 +1709,252 @@ function App() {
               )}
             </div>
           </>
+        ) : activeTab === 'contratos' ? (
+          /* ============================================================
+             ABA DE CONTRATOS DE TI
+          ============================================================ */
+          <>
+            {/* Alertas críticos de contratos */}
+            {(contratoStats.vencidos > 0 || contratoStats.vencendo_30d > 0) && (
+              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap'}}>
+                {contratoStats.vencidos > 0 && (
+                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '10px'}}>
+                    <CalendarX2 size={20} color="#ef4444" style={{flexShrink: 0}} />
+                    <div>
+                      <div style={{fontWeight: '700', color: '#ef4444', fontSize: '0.9rem'}}>{contratoStats.vencidos} contrato{contratoStats.vencidos > 1 ? 's' : ''} vencido{contratoStats.vencidos > 1 ? 's' : ''}</div>
+                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Acione o fornecedor ou inicie o processo de renovação/substituição.</div>
+                    </div>
+                  </div>
+                )}
+                {contratoStats.vencendo_30d > 0 && (
+                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '10px'}}>
+                    <AlertTriangle size={20} color="var(--warning)" style={{flexShrink: 0}} />
+                    <div>
+                      <div style={{fontWeight: '700', color: 'var(--warning)', fontSize: '0.9rem'}}>{contratoStats.vencendo_30d} contrato{contratoStats.vencendo_30d > 1 ? 's' : ''} vencendo em 30 dias</div>
+                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Negocie a renovação antecipadamente para evitar interrupção de serviços.</div>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* KPI Cards */}
+            <div className="stats-grid" style={{marginBottom: '1rem'}}>
+              <div className="stat-card">
+                <div className="stat-label">Total de Contratos</div>
+                <div className="stat-value">{contratoStats.total}</div>
+                <ScrollText size={24} color="var(--accent)" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Contratos Ativos</div>
+                <div className="stat-value" style={{color: '#22c55e'}}>{contratoStats.ativos}</div>
+                <BadgeCheck size={24} color="#22c55e" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card" style={{borderColor: contratoStats.vencendo_30d > 0 ? 'rgba(245,158,11,0.35)' : undefined}}>
+                <div className="stat-label">Vencendo em 30 dias</div>
+                <div className="stat-value" style={{color: contratoStats.vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{contratoStats.vencendo_30d}</div>
+                <AlertTriangle size={24} color={contratoStats.vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card" style={{borderColor: contratoStats.vencidos > 0 ? 'rgba(239,68,68,0.35)' : undefined}}>
+                <div className="stat-label">Contratos Vencidos</div>
+                <div className="stat-value" style={{color: contratoStats.vencidos > 0 ? '#ef4444' : 'var(--text-muted)'}}>{contratoStats.vencidos}</div>
+                <CalendarX2 size={24} color={contratoStats.vencidos > 0 ? '#ef4444' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+              </div>
+            </div>
+
+            {/* Custo anual + card renovação */}
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '1rem', marginBottom: '1.5rem'}}>
+              <div className="stat-card" style={{borderColor: 'rgba(139,92,246,0.3)'}}>
+                <div className="stat-label">Custo Anual de Contratos Ativos</div>
+                <div className="stat-value" style={{fontSize: '1.05rem', color: '#8b5cf6'}}>
+                  R$ {(contratoStats.valor_anual_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <DollarSign size={20} color="#8b5cf6" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Em Renovação</div>
+                <div className="stat-value" style={{fontSize: '1.5rem', color: 'var(--accent)'}}>{contratoStats.em_renovacao || 0}</div>
+                <RefreshCw size={20} color="var(--accent)" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Cancelados</div>
+                <div className="stat-value" style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{contratoStats.cancelados || 0}</div>
+                <X size={20} color="var(--text-muted)" style={{marginTop: 'auto'}} />
+              </div>
+            </div>
+
+            {/* Barra de filtros */}
+            <div className="filter-bar" style={{marginBottom: '1.5rem'}}>
+              <div className="search-box">
+                <Search size={18} />
+                <input
+                  type="text"
+                  placeholder="Pesquisar contrato, fornecedor, responsável..."
+                  value={filterContratoText}
+                  onChange={e => setFilterContratoText(e.target.value)}
+                />
+              </div>
+              <div className="filter-select">
+                <Filter size={16} />
+                <select value={filterContratoStatus} onChange={e => setFilterContratoStatus(e.target.value)}>
+                  <option value="Todos">📋 Todos Status</option>
+                  <option value="Ativo">✅ Ativo</option>
+                  <option value="Vencido">❌ Vencido</option>
+                  <option value="Em Renovação">🔄 Em Renovação</option>
+                  <option value="Cancelado">🚫 Cancelado</option>
+                </select>
+              </div>
+              <div className="filter-select">
+                <Briefcase size={16} />
+                <select value={filterContratoTipo} onChange={e => setFilterContratoTipo(e.target.value)}>
+                  <option value="Todos">📂 Todos Tipos</option>
+                  {CONTRATO_TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+              <div className="export-buttons">
+                <button className="btn-secondary" onClick={exportContratosToExcel} title="Exportar Excel">
+                  <FileSpreadsheet size={18} />
+                </button>
+              </div>
+              <button className="btn-primary gradient-btn" onClick={() => { setContratoFormData(contratoFormDefault); setIsContratoModalOpen(true); }}>
+                <Plus size={20} /> Novo Contrato
+              </button>
+            </div>
+
+            {/* Tabela de contratos */}
+            {filteredContratos.length === 0 ? (
+              <div style={{textAlign: 'center', padding: '4rem', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: '12px'}}>
+                <ScrollText size={48} color="var(--border)" style={{marginBottom: '1rem'}} />
+                <div style={{fontSize: '1rem', fontWeight: '600'}}>Nenhum contrato encontrado</div>
+                <div style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>Cadastre o primeiro contrato de TI usando o botão "Novo Contrato".</div>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nº / ID</th>
+                      <th>Contrato</th>
+                      <th>Fornecedor</th>
+                      <th>Vigência</th>
+                      <th>Valor Mensal</th>
+                      <th>Valor Anual</th>
+                      <th>Status</th>
+                      <th>Responsável</th>
+                      <th style={{textAlign: 'center'}}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredContratos.map(c => {
+                      const hoje = new Date(); hoje.setHours(0,0,0,0);
+                      const venc = c.data_vencimento ? new Date(c.data_vencimento + 'T00:00:00') : null;
+                      const diasRestantes = venc ? Math.floor((venc - hoje) / 86400000) : null;
+                      const vencBadge = diasRestantes === null ? null
+                        : diasRestantes < 0 ? { text: `Venceu há ${Math.abs(diasRestantes)}d`, color: '#ef4444', bg: 'rgba(239,68,68,0.12)', border: 'rgba(239,68,68,0.3)' }
+                        : diasRestantes <= 30 ? { text: `Vence em ${diasRestantes}d`, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)', border: 'rgba(245,158,11,0.3)' }
+                        : diasRestantes <= 60 ? { text: `Vence em ${diasRestantes}d`, color: '#38bdf8', bg: 'rgba(56,189,248,0.12)', border: 'rgba(56,189,248,0.3)' }
+                        : null;
+                      const statusClass = c.status === 'Ativo' ? 'status-ativo'
+                        : c.status === 'Vencido' ? 'status-vencido'
+                        : c.status === 'Em Renovação' ? 'status-em-renovação'
+                        : 'status-cancelado';
+                      return (
+                        <tr key={c.id} className="table-row-hover">
+                          <td>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.2rem'}}>
+                              {c.numero_contrato ? (
+                                <strong style={{color: 'var(--accent)', fontSize: '0.82rem'}}>{c.numero_contrato}</strong>
+                              ) : (
+                                <span style={{color: 'var(--text-muted)', fontSize: '0.78rem', fontStyle: 'italic'}}>#{c.id}</span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.25rem', maxWidth: '200px'}}>
+                              <strong style={{fontSize: '0.88rem'}}>{c.titulo}</strong>
+                              <span style={{display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.72rem', fontWeight: '600', padding: '1px 7px', borderRadius: '999px', backgroundColor: 'rgba(56,189,248,0.1)', color: 'var(--accent)', width: 'fit-content'}}>
+                                <Briefcase size={10} />{c.tipo}
+                              </span>
+                              {c.renovacao_automatica && (
+                                <span style={{display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', padding: '1px 6px', borderRadius: '999px', backgroundColor: 'rgba(34,197,94,0.1)', color: '#22c55e', width: 'fit-content'}}>
+                                  <RefreshCw size={9} /> Auto-renovação
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.2rem'}}>
+                              <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.85rem', fontWeight: '600'}}>
+                                <Building2 size={13} color="var(--accent)" />{c.fornecedor}
+                              </div>
+                              {c.contato_fornecedor && (
+                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>{c.contato_fornecedor}</div>
+                              )}
+                              {c.telefone_fornecedor && (
+                                <div style={{display: 'flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.73rem', color: 'var(--text-muted)'}}>
+                                  <Phone size={10} />{c.telefone_fornecedor}
+                                </div>
+                              )}
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{display: 'flex', flexDirection: 'column', gap: '0.25rem'}}>
+                              {c.data_inicio && (
+                                <div style={{fontSize: '0.75rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.3rem'}}>
+                                  <Calendar size={10} />Início: {new Date(c.data_inicio + 'T00:00:00').toLocaleDateString('pt-BR')}
+                                </div>
+                              )}
+                              {venc && (
+                                <div style={{fontSize: '0.82rem', display: 'flex', alignItems: 'center', gap: '0.3rem'}}>
+                                  <Calendar size={11} color={diasRestantes !== null && diasRestantes < 0 ? '#ef4444' : diasRestantes !== null && diasRestantes <= 30 ? '#f59e0b' : 'var(--text-muted)'} />
+                                  {venc.toLocaleDateString('pt-BR')}
+                                </div>
+                              )}
+                              {vencBadge && (
+                                <span style={{display: 'inline-flex', alignItems: 'center', gap: '0.3rem', fontSize: '0.68rem', fontWeight: '700', padding: '2px 7px', borderRadius: '999px', backgroundColor: vencBadge.bg, color: vencBadge.color, border: `1px solid ${vencBadge.border}`, width: 'fit-content'}}>
+                                  <Clock size={9} />{vencBadge.text}
+                                </span>
+                              )}
+                            </div>
+                          </td>
+                          <td style={{fontSize: '0.85rem'}}>
+                            {c.valor_mensal != null
+                              ? <span>R$ {Number(c.valor_mensal).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                              : <span style={{color: 'var(--text-muted)', opacity: 0.4}}>—</span>}
+                          </td>
+                          <td style={{fontSize: '0.85rem'}}>
+                            {c.valor_anual != null
+                              ? <strong style={{color: '#8b5cf6'}}>R$ {Number(c.valor_anual).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</strong>
+                              : c.valor_mensal != null
+                                ? <span style={{color: 'var(--text-muted)', fontSize: '0.78rem'}}>≈ R$ {(Number(c.valor_mensal) * 12).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</span>
+                                : <span style={{color: 'var(--text-muted)', opacity: 0.4}}>—</span>}
+                          </td>
+                          <td>
+                            <span className={`status-badge ${statusClass}`}>
+                              {c.status}
+                            </span>
+                          </td>
+                          <td style={{fontSize: '0.83rem', color: c.responsavel_interno ? 'var(--text-main)' : 'var(--text-muted)'}}>
+                            {c.responsavel_interno || <span style={{opacity: 0.4, fontStyle: 'italic'}}>—</span>}
+                          </td>
+                          <td style={{textAlign: 'center'}} onClick={e => e.stopPropagation()}>
+                            <div style={{display: 'flex', justifyContent: 'center', gap: '0.25rem'}}>
+                              <button className="btn-icon" onClick={() => openEditContrato(c)} title="Editar Contrato">
+                                <Edit2 size={15} />
+                              </button>
+                              <button className="btn-icon" style={{color: '#ef4444'}} onClick={() => handleDeleteContrato(c.id)} title="Excluir Contrato">
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ) : (
           /* Aba de Relatórios e Gráficos */
           <div className="reports-grid">
@@ -1766,6 +2178,240 @@ function App() {
                 <button type="submit" className="btn-primary gradient-btn" style={{width: '100%', justifyContent: 'center', marginTop: '1rem'}}>
                   Salvar Equipamento
                 </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL CRIAR CONTRATO --- */}
+        {isContratoModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsContratoModalOpen(false)}>
+            <div className="modal" style={{maxWidth: '720px'}} onClick={e => e.stopPropagation()}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                  <ScrollText size={22} color="var(--accent)" />
+                  <h2 style={{margin: 0}}>Novo Contrato de TI</h2>
+                </div>
+                <X size={24} style={{cursor: 'pointer'}} onClick={() => setIsContratoModalOpen(false)} />
+              </div>
+              <form onSubmit={handleCreateContrato}>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Nº do Contrato</label>
+                    <input value={contratoFormData.numero_contrato} onChange={e => setContratoFormData({...contratoFormData, numero_contrato: e.target.value})} placeholder="Ex: CTR-2025-001" />
+                  </div>
+                  <div className="form-group">
+                    <label>Título do Contrato *</label>
+                    <input required value={contratoFormData.titulo} onChange={e => setContratoFormData({...contratoFormData, titulo: e.target.value})} placeholder="Ex: Licença Microsoft 365 E3" />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Tipo de Contrato *</label>
+                    <select required value={contratoFormData.tipo} onChange={e => setContratoFormData({...contratoFormData, tipo: e.target.value})}>
+                      {CONTRATO_TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Fornecedor *</label>
+                    <input required value={contratoFormData.fornecedor} onChange={e => setContratoFormData({...contratoFormData, fornecedor: e.target.value})} placeholder="Ex: Microsoft Brasil Ltda" />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Contato no Fornecedor</label>
+                    <input value={contratoFormData.contato_fornecedor} onChange={e => setContratoFormData({...contratoFormData, contato_fornecedor: e.target.value})} placeholder="Nome do contato" />
+                  </div>
+                  <div className="form-group">
+                    <label>Telefone Fornecedor</label>
+                    <input value={contratoFormData.telefone_fornecedor} onChange={e => setContratoFormData({...contratoFormData, telefone_fornecedor: e.target.value})} placeholder="(11) 9999-0000" />
+                  </div>
+                  <div className="form-group">
+                    <label>E-mail Fornecedor</label>
+                    <input type="email" value={contratoFormData.email_fornecedor} onChange={e => setContratoFormData({...contratoFormData, email_fornecedor: e.target.value})} placeholder="contato@fornecedor.com" />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Data de Início</label>
+                    <input type="date" value={contratoFormData.data_inicio} onChange={e => setContratoFormData({...contratoFormData, data_inicio: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Data de Vencimento *</label>
+                    <input type="date" required value={contratoFormData.data_vencimento} onChange={e => setContratoFormData({...contratoFormData, data_vencimento: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Valor Mensal (R$)</label>
+                    <input type="number" step="0.01" value={contratoFormData.valor_mensal} onChange={e => setContratoFormData({...contratoFormData, valor_mensal: e.target.value})} placeholder="0,00" />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Anual (R$)</label>
+                    <input type="number" step="0.01" value={contratoFormData.valor_anual} onChange={e => setContratoFormData({...contratoFormData, valor_anual: e.target.value})} placeholder="0,00" />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Total (R$)</label>
+                    <input type="number" step="0.01" value={contratoFormData.valor_total} onChange={e => setContratoFormData({...contratoFormData, valor_total: e.target.value})} placeholder="0,00" />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select value={contratoFormData.status} onChange={e => setContratoFormData({...contratoFormData, status: e.target.value})}>
+                      <option value="Ativo">Ativo</option>
+                      <option value="Em Renovação">Em Renovação</option>
+                      <option value="Cancelado">Cancelado</option>
+                      <option value="Vencido">Vencido</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Responsável Interno</label>
+                    <input value={contratoFormData.responsavel_interno} onChange={e => setContratoFormData({...contratoFormData, responsavel_interno: e.target.value})} placeholder="Ex: João Silva" />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Prazo de Aviso (dias antes do vencimento)</label>
+                    <input type="number" min="0" max="365" value={contratoFormData.prazo_aviso_dias} onChange={e => setContratoFormData({...contratoFormData, prazo_aviso_dias: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{justifyContent: 'center', paddingTop: '0.5rem'}}>
+                    <label style={{marginBottom: '0.5rem'}}>Renovação Automática</label>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '0.3rem'}}>
+                      <input type="checkbox" id="renov_auto_create" checked={contratoFormData.renovacao_automatica} onChange={e => setContratoFormData({...contratoFormData, renovacao_automatica: e.target.checked})} style={{width: '18px', height: '18px', cursor: 'pointer'}} />
+                      <label htmlFor="renov_auto_create" style={{cursor: 'pointer', fontWeight: '400', color: 'var(--text-muted)', margin: 0}}>Sim, renova automaticamente</label>
+                    </div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Descrição / Objeto do Contrato</label>
+                  <textarea rows="2" value={contratoFormData.descricao} onChange={e => setContratoFormData({...contratoFormData, descricao: e.target.value})} placeholder="Descreva o objeto principal deste contrato..." />
+                </div>
+                <div className="form-group">
+                  <label>Observações</label>
+                  <textarea rows="2" value={contratoFormData.observacoes} onChange={e => setContratoFormData({...contratoFormData, observacoes: e.target.value})} placeholder="Notas adicionais, cláusulas importantes, etc..." />
+                </div>
+                <div style={{display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem'}}>
+                  <button type="button" className="btn-secondary" onClick={() => setIsContratoModalOpen(false)}>Cancelar</button>
+                  <button type="submit" className="btn-primary gradient-btn"><Plus size={16} /> Cadastrar Contrato</button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL EDITAR CONTRATO --- */}
+        {isContratoEditModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsContratoEditModalOpen(false)}>
+            <div className="modal" style={{maxWidth: '720px'}} onClick={e => e.stopPropagation()}>
+              <div style={{display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem'}}>
+                <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem'}}>
+                  <ScrollText size={22} color="var(--accent)" />
+                  <h2 style={{margin: 0}}>Editar Contrato</h2>
+                </div>
+                <X size={24} style={{cursor: 'pointer'}} onClick={() => setIsContratoEditModalOpen(false)} />
+              </div>
+              <form onSubmit={handleUpdateContrato}>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 2fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Nº do Contrato</label>
+                    <input value={contratoFormData.numero_contrato} onChange={e => setContratoFormData({...contratoFormData, numero_contrato: e.target.value})} placeholder="Ex: CTR-2025-001" />
+                  </div>
+                  <div className="form-group">
+                    <label>Título do Contrato *</label>
+                    <input required value={contratoFormData.titulo} onChange={e => setContratoFormData({...contratoFormData, titulo: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Tipo de Contrato *</label>
+                    <select required value={contratoFormData.tipo} onChange={e => setContratoFormData({...contratoFormData, tipo: e.target.value})}>
+                      {CONTRATO_TIPOS.map(t => <option key={t} value={t}>{t}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Fornecedor *</label>
+                    <input required value={contratoFormData.fornecedor} onChange={e => setContratoFormData({...contratoFormData, fornecedor: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Contato no Fornecedor</label>
+                    <input value={contratoFormData.contato_fornecedor} onChange={e => setContratoFormData({...contratoFormData, contato_fornecedor: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Telefone Fornecedor</label>
+                    <input value={contratoFormData.telefone_fornecedor} onChange={e => setContratoFormData({...contratoFormData, telefone_fornecedor: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>E-mail Fornecedor</label>
+                    <input type="email" value={contratoFormData.email_fornecedor} onChange={e => setContratoFormData({...contratoFormData, email_fornecedor: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Data de Início</label>
+                    <input type="date" value={contratoFormData.data_inicio} onChange={e => setContratoFormData({...contratoFormData, data_inicio: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Data de Vencimento *</label>
+                    <input type="date" required value={contratoFormData.data_vencimento} onChange={e => setContratoFormData({...contratoFormData, data_vencimento: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Valor Mensal (R$)</label>
+                    <input type="number" step="0.01" value={contratoFormData.valor_mensal} onChange={e => setContratoFormData({...contratoFormData, valor_mensal: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Anual (R$)</label>
+                    <input type="number" step="0.01" value={contratoFormData.valor_anual} onChange={e => setContratoFormData({...contratoFormData, valor_anual: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Total (R$)</label>
+                    <input type="number" step="0.01" value={contratoFormData.valor_total} onChange={e => setContratoFormData({...contratoFormData, valor_total: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select value={contratoFormData.status} onChange={e => setContratoFormData({...contratoFormData, status: e.target.value})}>
+                      <option value="Ativo">Ativo</option>
+                      <option value="Em Renovação">Em Renovação</option>
+                      <option value="Cancelado">Cancelado</option>
+                      <option value="Vencido">Vencido</option>
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Responsável Interno</label>
+                    <input value={contratoFormData.responsavel_interno} onChange={e => setContratoFormData({...contratoFormData, responsavel_interno: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                  <div className="form-group">
+                    <label>Prazo de Aviso (dias antes do vencimento)</label>
+                    <input type="number" min="0" max="365" value={contratoFormData.prazo_aviso_dias} onChange={e => setContratoFormData({...contratoFormData, prazo_aviso_dias: e.target.value})} />
+                  </div>
+                  <div className="form-group" style={{paddingTop: '0.5rem'}}>
+                    <label style={{marginBottom: '0.5rem'}}>Renovação Automática</label>
+                    <div style={{display: 'flex', alignItems: 'center', gap: '0.75rem', paddingTop: '0.3rem'}}>
+                      <input type="checkbox" id="renov_auto_edit" checked={contratoFormData.renovacao_automatica} onChange={e => setContratoFormData({...contratoFormData, renovacao_automatica: e.target.checked})} style={{width: '18px', height: '18px', cursor: 'pointer'}} />
+                      <label htmlFor="renov_auto_edit" style={{cursor: 'pointer', fontWeight: '400', color: 'var(--text-muted)', margin: 0}}>Sim, renova automaticamente</label>
+                    </div>
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Descrição / Objeto do Contrato</label>
+                  <textarea rows="2" value={contratoFormData.descricao} onChange={e => setContratoFormData({...contratoFormData, descricao: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Observações</label>
+                  <textarea rows="2" value={contratoFormData.observacoes} onChange={e => setContratoFormData({...contratoFormData, observacoes: e.target.value})} />
+                </div>
+                <div style={{display: 'flex', gap: '1rem', justifyContent: 'flex-end', marginTop: '1.5rem'}}>
+                  <button type="button" className="btn-secondary" onClick={() => setIsContratoEditModalOpen(false)}>Cancelar</button>
+                  <button type="submit" className="btn-primary gradient-btn"><Edit2 size={16} /> Salvar Alterações</button>
+                </div>
               </form>
             </div>
           </div>
