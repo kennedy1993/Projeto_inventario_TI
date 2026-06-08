@@ -2101,16 +2101,18 @@ function App() {
                   <textarea rows="2" value={formData.especificacoes} onChange={e => setFormData({...formData, especificacoes: e.target.value})} placeholder="Ex: i5, 16GB RAM, 512GB SSD" />
                 </div>
 
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                  <div className="form-group">
-                    <label>Licença Windows</label>
-                    <input value={formData.licenca_windows} onChange={e => setFormData({...formData, licenca_windows: e.target.value})} placeholder="Ex: Win 11 Pro" />
+                {['NOTEBOOK', 'DESKTOP'].includes(formData.tipo) && (
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                    <div className="form-group">
+                      <label>Licença Windows</label>
+                      <input value={formData.licenca_windows} onChange={e => setFormData({...formData, licenca_windows: e.target.value})} placeholder="Ex: Win 11 Pro" />
+                    </div>
+                    <div className="form-group">
+                      <label>Licença Office</label>
+                      <input value={formData.licenca_office} onChange={e => setFormData({...formData, licenca_office: e.target.value})} placeholder="Ex: Office 365" />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Licença Office</label>
-                    <input value={formData.licenca_office} onChange={e => setFormData({...formData, licenca_office: e.target.value})} placeholder="Ex: Office 365" />
-                  </div>
-                </div>
+                )}
 
                 {formData.tipo === 'CELULAR' && (
                   <div className="form-group">
@@ -2466,16 +2468,18 @@ function App() {
                   <textarea rows="2" value={formData.especificacoes} onChange={e => setFormData({...formData, especificacoes: e.target.value})} />
                 </div>
 
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                  <div className="form-group">
-                    <label>Licença Windows</label>
-                    <input value={formData.licenca_windows} onChange={e => setFormData({...formData, licenca_windows: e.target.value})} />
+                {['NOTEBOOK', 'DESKTOP'].includes(formData.tipo) && (
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                    <div className="form-group">
+                      <label>Licença Windows</label>
+                      <input value={formData.licenca_windows} onChange={e => setFormData({...formData, licenca_windows: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Licença Office</label>
+                      <input value={formData.licenca_office} onChange={e => setFormData({...formData, licenca_office: e.target.value})} />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Licença Office</label>
-                    <input value={formData.licenca_office} onChange={e => setFormData({...formData, licenca_office: e.target.value})} />
-                  </div>
-                </div>
+                )}
 
                 {formData.tipo === 'CELULAR' && (
                   <div className="form-group">
