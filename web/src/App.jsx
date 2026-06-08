@@ -1254,6 +1254,8 @@ function App() {
                       <option value="DESKTOP">DESKTOP</option>
                       <option value="CELULAR">CELULAR</option>
                       <option value="IMPRESSORA">IMPRESSORA</option>
+                      <option value="TONER">TONER DE IMPRESSORA</option>
+                      <option value="LICENÇA">LICENÇA</option>
                       <option value="OUTROS">OUTROS</option>
                     </select>
                   </div>
@@ -1348,6 +1350,8 @@ function App() {
                       <option value="DESKTOP">DESKTOP</option>
                       <option value="CELULAR">CELULAR</option>
                       <option value="IMPRESSORA">IMPRESSORA</option>
+                      <option value="TONER">TONER DE IMPRESSORA</option>
+                      <option value="LICENÇA">LICENÇA</option>
                       <option value="OUTROS">OUTROS</option>
                     </select>
                   </div>
