@@ -486,6 +486,7 @@ def obter_proxima_tag(tipo: str = "NOTEBOOK", db: Session = Depends(get_db)):
         "IMPRESSORA": "IMP",
         "TONER":      "TNR",
         "LICENÇA":    "LIC",
+        "STARLINK":   "STL",
         "OUTROS":     "OUT",
     }
     prefixo = prefixos.get(tipo.upper(), "OUT")

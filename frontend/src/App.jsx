@@ -2079,6 +2079,7 @@ function App() {
                       <option value="IMPRESSORA">IMPRESSORA</option>
                       <option value="TONER">TONER DE IMPRESSORA</option>
                       <option value="LICENÇA">LICENÇA</option>
+                      <option value="STARLINK">STARLINK</option>
                       <option value="OUTROS">OUTROS</option>
                     </select>
                   </div>
@@ -2443,6 +2444,7 @@ function App() {
                       <option value="IMPRESSORA">IMPRESSORA</option>
                       <option value="TONER">TONER DE IMPRESSORA</option>
                       <option value="LICENÇA">LICENÇA</option>
+                      <option value="STARLINK">STARLINK</option>
                       <option value="OUTROS">OUTROS</option>
                     </select>
                   </div>
