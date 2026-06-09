@@ -213,7 +213,7 @@ function App() {
   const [contratoFormData, setContratoFormData] = useState(contratoFormDefault);
 
   // --- AQUISIÇÃO DE MATERIAL STATE ---
-  const SOLICITACAO_CATEGORIAS = ['Notebook', 'Monitor', 'Desktop', 'Celular', 'Impressora', 'Periférico', 'Software', 'Serviço de TI', 'Infraestrutura', 'Outro'];
+  const SOLICITACAO_CATEGORIAS = ['Notebook', 'Monitor', 'Desktop', 'Celular', 'Fone', 'Impressora', 'Periférico', 'Software', 'Serviço de TI', 'Infraestrutura', 'Outro'];
   const SOLICITACAO_PRIORIDADES = ['Baixa', 'Média', 'Alta', 'Crítica'];
   const SOLICITACAO_STATUS_LIST = ['Rascunho', 'Aguard. Aprovação', 'Aprovado', 'Em Cotação', 'Em Aquisição', 'Recebido', 'Cancelado'];
 
