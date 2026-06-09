@@ -429,9 +429,10 @@ function App() {
       else payload.colaborador_id = parseInt(payload.colaborador_id);
       if (payload.valor) payload.valor = parseFloat(payload.valor);
       else payload.valor = null;
-      
       if (!payload.data_aquisicao) payload.data_aquisicao = null;
       if (!payload.data_garantia) payload.data_garantia = null;
+      const camposOpcionais = ['marca', 'modelo', 'especificacoes', 'licenca_windows', 'licenca_office', 'numero_chip', 'numero_serie', 'fornecedor', 'observacao'];
+      camposOpcionais.forEach(campo => { if (payload[campo] === '') payload[campo] = null; });
       await axios.post(`${API_BASE_URL}/api/ativos`, payload);
       showToast("Equipamento cadastrado com sucesso!", "success");
       setIsModalOpen(false);
@@ -457,7 +458,8 @@ function App() {
       else payload.valor = null;
       if (!payload.data_aquisicao) payload.data_aquisicao = null;
       if (!payload.data_garantia) payload.data_garantia = null;
-
+      const camposOpcionais = ['marca', 'modelo', 'especificacoes', 'licenca_windows', 'licenca_office', 'numero_chip', 'numero_serie', 'fornecedor', 'observacao'];
+      camposOpcionais.forEach(campo => { if (payload[campo] === '') payload[campo] = null; });
       await axios.put(`${API_BASE_URL}/api/ativos/${editingAsset.id}`, payload);
       showToast("Equipamento atualizado com sucesso!", "success");
       setIsEditModalOpen(false);

@@ -599,14 +599,12 @@ def criar_ativo(ativo: AtivoCreate, db: Session = Depends(get_db)):
     db_ativo = db.query(Ativo).filter(Ativo.tag_patrimonio == ativo.tag_patrimonio).first()
     if db_ativo:
         raise HTTPException(status_code=400, detail="TAG de Patrimônio já registrada.")
-    
-    payload = ativo.dict()
+
+    payload = ativo.model_dump()
     novo_ativo = Ativo(**payload)
     db.add(novo_ativo)
-    db.commit()
-    db.refresh(novo_ativo)
-    
-    # Log de cadastro inicial no histórico
+    db.flush()  # garante o ID sem fechar a transação
+
     hist = HistoricoAtivo(
         ativo_id=novo_ativo.id,
         colaborador_id=novo_ativo.colaborador_id,
@@ -616,8 +614,35 @@ def criar_ativo(ativo: AtivoCreate, db: Session = Depends(get_db)):
     )
     db.add(hist)
     db.commit()
-    
-    return novo_ativo
+    db.refresh(novo_ativo)
+
+    # Retorna dict explícito para evitar problemas de serialização do objeto SQLAlchemy
+    colab = db.query(Colaborador).filter(Colaborador.id == novo_ativo.colaborador_id).first() if novo_ativo.colaborador_id else None
+    return {
+        "id": novo_ativo.id,
+        "tag_patrimonio": novo_ativo.tag_patrimonio,
+        "tipo": novo_ativo.tipo,
+        "marca": novo_ativo.marca,
+        "modelo": novo_ativo.modelo,
+        "especificacoes": novo_ativo.especificacoes,
+        "local_fisico": novo_ativo.local_fisico,
+        "status": novo_ativo.status,
+        "licenca_windows": novo_ativo.licenca_windows,
+        "licenca_office": novo_ativo.licenca_office,
+        "numero_chip": novo_ativo.numero_chip,
+        "numero_serie": novo_ativo.numero_serie,
+        "fornecedor": novo_ativo.fornecedor,
+        "data_aquisicao": novo_ativo.data_aquisicao.isoformat() if novo_ativo.data_aquisicao else None,
+        "data_garantia": novo_ativo.data_garantia.isoformat() if novo_ativo.data_garantia else None,
+        "observacao": novo_ativo.observacao,
+        "valor": float(novo_ativo.valor) if novo_ativo.valor else None,
+        "colaborador_id": novo_ativo.colaborador_id,
+        "colaborador": {
+            "id": colab.id, "nome": colab.nome,
+            "email": colab.email_corporativo,
+            "setor": colab.setor.nome if colab.setor else None
+        } if colab else None,
+    }
 
 # Rota para atualizar um equipamento no banco com auditoria automática no histórico
 @app.put("/api/ativos/{id}")
@@ -626,8 +651,8 @@ def atualizar_ativo(id: int, data: AtivoUpdate, db: Session = Depends(get_db)):
     if not ativo:
         raise HTTPException(status_code=404, detail="Equipamento não encontrado")
     
-    update_data = data.dict(exclude_unset=True)
-    
+    update_data = data.model_dump(exclude_unset=True)
+
     old_status = ativo.status
     old_colab_id = ativo.colaborador_id
     old_local = ativo.local_fisico
@@ -676,7 +701,33 @@ def atualizar_ativo(id: int, data: AtivoUpdate, db: Session = Depends(get_db)):
     
     db.commit()
     db.refresh(ativo)
-    return ativo
+
+    colab = db.query(Colaborador).filter(Colaborador.id == ativo.colaborador_id).first() if ativo.colaborador_id else None
+    return {
+        "id": ativo.id,
+        "tag_patrimonio": ativo.tag_patrimonio,
+        "tipo": ativo.tipo,
+        "marca": ativo.marca,
+        "modelo": ativo.modelo,
+        "especificacoes": ativo.especificacoes,
+        "local_fisico": ativo.local_fisico,
+        "status": ativo.status,
+        "licenca_windows": ativo.licenca_windows,
+        "licenca_office": ativo.licenca_office,
+        "numero_chip": ativo.numero_chip,
+        "numero_serie": ativo.numero_serie,
+        "fornecedor": ativo.fornecedor,
+        "data_aquisicao": ativo.data_aquisicao.isoformat() if ativo.data_aquisicao else None,
+        "data_garantia": ativo.data_garantia.isoformat() if ativo.data_garantia else None,
+        "observacao": ativo.observacao,
+        "valor": float(ativo.valor) if ativo.valor else None,
+        "colaborador_id": ativo.colaborador_id,
+        "colaborador": {
+            "id": colab.id, "nome": colab.nome,
+            "email": colab.email_corporativo,
+            "setor": colab.setor.nome if colab.setor else None
+        } if colab else None,
+    }
 
 # Rota para excluir um equipamento no banco
 @app.delete("/api/ativos/{id}")
@@ -864,7 +915,7 @@ def atualizar_colaborador(colaborador_id: int, data: ColaboradorUpdate, db: Sess
     if not db_colab:
         raise HTTPException(status_code=404, detail="Colaborador não encontrado")
     
-    update_data = data.dict(exclude_unset=True)
+    update_data = data.model_dump(exclude_unset=True)
     if "email_corporativo" in update_data:
         db_colab.email_corporativo = update_data["email_corporativo"] if update_data["email_corporativo"] else None
     if "nome" in update_data:
@@ -1072,7 +1123,7 @@ def atualizar_contrato(id: int, data: ContratoUpdate, db: Session = Depends(get_
     if not contrato:
         raise HTTPException(status_code=404, detail="Contrato não encontrado")
 
-    update_data = data.dict(exclude_unset=True)
+    update_data = data.model_dump(exclude_unset=True)
     for key, value in update_data.items():
         setattr(contrato, key, value)
     contrato.updated_at = datetime.now()
