@@ -41,7 +41,17 @@ import {
   Phone,
   CalendarX2,
   BadgeCheck,
-  RefreshCw
+  RefreshCw,
+  ShoppingCart,
+  ClipboardList,
+  PackageCheck,
+  Tag,
+  ListChecks,
+  TrendingDown,
+  PackagePlus,
+  CircleDot,
+  ArrowRight,
+  Inbox
 } from 'lucide-react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend, BarChart, Bar, XAxis, YAxis, CartesianGrid } from 'recharts';
 import * as XLSX from 'xlsx';
@@ -202,6 +212,36 @@ function App() {
   };
   const [contratoFormData, setContratoFormData] = useState(contratoFormDefault);
 
+  // --- AQUISIÇÃO DE MATERIAL STATE ---
+  const SOLICITACAO_CATEGORIAS = ['Notebook', 'Monitor', 'Desktop', 'Celular', 'Impressora', 'Periférico', 'Software', 'Serviço de TI', 'Infraestrutura', 'Outro'];
+  const SOLICITACAO_PRIORIDADES = ['Baixa', 'Média', 'Alta', 'Crítica'];
+  const SOLICITACAO_STATUS_LIST = ['Rascunho', 'Aguard. Aprovação', 'Aprovado', 'Em Cotação', 'Em Aquisição', 'Recebido', 'Cancelado'];
+
+  const solicitacaoFormDefault = {
+    numero_solicitacao: '', titulo: '', descricao: '', categoria: 'Notebook',
+    prioridade: 'Média', status: 'Rascunho', quantidade_solicitada: 1,
+    valor_estimado: '', valor_aprovado: '', valor_final: '',
+    fornecedor_escolhido: '', solicitante: '', aprovador: '', justificativa: '',
+    observacoes: '', centro_custo: '', data_solicitacao: '', data_aprovacao: '',
+    data_previsao_entrega: '', data_recebimento: ''
+  };
+
+  const [solicitacoes, setSolicitacoes] = useState([]);
+  const [solicitacaoStats, setSolicitacaoStats] = useState({
+    total: 0, rascunhos: 0, aguardando_aprovacao: 0, aprovados: 0,
+    em_cotacao: 0, em_aquisicao: 0, recebidos: 0, cancelados: 0,
+    em_aberto: 0, valor_comprometido: 0, valor_gasto_total: 0,
+    gastos_por_categoria: [], funil_status: []
+  });
+  const [isSolicitacaoModalOpen, setIsSolicitacaoModalOpen] = useState(false);
+  const [isSolicitacaoEditModalOpen, setIsSolicitacaoEditModalOpen] = useState(false);
+  const [editingSolicitacao, setEditingSolicitacao] = useState(null);
+  const [solicitacaoFormData, setSolicitacaoFormData] = useState(solicitacaoFormDefault);
+  const [filterSolicitacaoText, setFilterSolicitacaoText] = useState('');
+  const [filterSolicitacaoStatus, setFilterSolicitacaoStatus] = useState('Todos');
+  const [filterSolicitacaoPrioridade, setFilterSolicitacaoPrioridade] = useState('Todos');
+  const [filterSolicitacaoCategoria, setFilterSolicitacaoCategoria] = useState('Todos');
+
   // Chat IA State
   const [isChatOpen, setIsChatOpen] = useState(false);
   const [chatInput, setChatInput] = useState('');
@@ -316,6 +356,15 @@ function App() {
         ]);
         setContratos(resContratos.data);
         setContratoStats(resContratoStats.data);
+      }
+
+      if (activeTab === 'aquisicao') {
+        const [resSol, resSolStats] = await Promise.all([
+          axios.get(`${API_BASE_URL}/api/solicitacoes`),
+          axios.get(`${API_BASE_URL}/api/solicitacoes/stats`)
+        ]);
+        setSolicitacoes(resSol.data);
+        setSolicitacaoStats(resSolStats.data);
       }
     } catch (error) {
       console.error("Erro ao buscar dados da API:", error);
@@ -508,6 +557,135 @@ function App() {
       prazo_aviso_dias: c.prazo_aviso_dias || 30
     });
     setIsContratoEditModalOpen(true);
+  };
+
+  // --- CRUD SOLICITAÇÕES DE AQUISIÇÃO ---
+
+  const fetchSolicitacoes = async () => {
+    try {
+      const [resSol, resSolStats] = await Promise.all([
+        axios.get(`${API_BASE_URL}/api/solicitacoes`),
+        axios.get(`${API_BASE_URL}/api/solicitacoes/stats`)
+      ]);
+      setSolicitacoes(resSol.data);
+      setSolicitacaoStats(resSolStats.data);
+    } catch (err) {
+      console.error("Erro ao buscar solicitações:", err);
+    }
+  };
+
+  const parseSolicitacaoPayload = (form) => {
+    const p = { ...form };
+    p.valor_estimado = p.valor_estimado ? parseFloat(p.valor_estimado) : null;
+    p.valor_aprovado = p.valor_aprovado ? parseFloat(p.valor_aprovado) : null;
+    p.valor_final    = p.valor_final    ? parseFloat(p.valor_final)    : null;
+    p.quantidade_solicitada = p.quantidade_solicitada ? parseInt(p.quantidade_solicitada) : 1;
+    ['data_solicitacao', 'data_aprovacao', 'data_previsao_entrega', 'data_recebimento'].forEach(k => {
+      if (!p[k]) p[k] = null;
+    });
+    if (!p.numero_solicitacao) delete p.numero_solicitacao;
+    return p;
+  };
+
+  const handleCreateSolicitacao = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.post(`${API_BASE_URL}/api/solicitacoes`, parseSolicitacaoPayload(solicitacaoFormData));
+      showToast("Solicitação criada com sucesso!", "success");
+      setIsSolicitacaoModalOpen(false);
+      setSolicitacaoFormData(solicitacaoFormDefault);
+      fetchSolicitacoes();
+    } catch (error) {
+      showToast(error.response?.data?.detail || "Erro ao criar solicitação", "error");
+    }
+  };
+
+  const handleUpdateSolicitacao = async (e) => {
+    e.preventDefault();
+    try {
+      await axios.put(`${API_BASE_URL}/api/solicitacoes/${editingSolicitacao.id}`, parseSolicitacaoPayload(solicitacaoFormData));
+      showToast("Solicitação atualizada com sucesso!", "success");
+      setIsSolicitacaoEditModalOpen(false);
+      setEditingSolicitacao(null);
+      fetchSolicitacoes();
+    } catch (error) {
+      showToast(error.response?.data?.detail || "Erro ao atualizar solicitação", "error");
+    }
+  };
+
+  const handleDeleteSolicitacao = async (id) => {
+    if (!window.confirm("Tem certeza que deseja excluir esta solicitação permanentemente?")) return;
+    try {
+      await axios.delete(`${API_BASE_URL}/api/solicitacoes/${id}`);
+      showToast("Solicitação excluída com sucesso!", "success");
+      fetchSolicitacoes();
+    } catch (error) {
+      showToast("Erro ao excluir solicitação", "error");
+    }
+  };
+
+  const openEditSolicitacao = (s) => {
+    setEditingSolicitacao(s);
+    setSolicitacaoFormData({
+      numero_solicitacao: s.numero_solicitacao || '',
+      titulo: s.titulo || '',
+      descricao: s.descricao || '',
+      categoria: s.categoria || 'Notebook',
+      prioridade: s.prioridade || 'Média',
+      status: s.status || 'Rascunho',
+      quantidade_solicitada: s.quantidade_solicitada || 1,
+      valor_estimado: s.valor_estimado ?? '',
+      valor_aprovado: s.valor_aprovado ?? '',
+      valor_final: s.valor_final ?? '',
+      fornecedor_escolhido: s.fornecedor_escolhido || '',
+      solicitante: s.solicitante || '',
+      aprovador: s.aprovador || '',
+      justificativa: s.justificativa || '',
+      observacoes: s.observacoes || '',
+      centro_custo: s.centro_custo || '',
+      data_solicitacao: s.data_solicitacao || '',
+      data_aprovacao: s.data_aprovacao || '',
+      data_previsao_entrega: s.data_previsao_entrega || '',
+      data_recebimento: s.data_recebimento || ''
+    });
+    setIsSolicitacaoEditModalOpen(true);
+  };
+
+  const openCreateSolicitacao = async () => {
+    try {
+      const res = await axios.get(`${API_BASE_URL}/api/solicitacoes/next-numero`);
+      setSolicitacaoFormData({ ...solicitacaoFormDefault, numero_solicitacao: res.data.next_numero });
+    } catch {
+      setSolicitacaoFormData(solicitacaoFormDefault);
+    }
+    setIsSolicitacaoModalOpen(true);
+  };
+
+  const exportSolicitacoesToExcel = () => {
+    const data = filteredSolicitacoes.map(s => ({
+      'Nº Solicitação':       s.numero_solicitacao || '',
+      'Título':               s.titulo || '',
+      'Categoria':            s.categoria || '',
+      'Prioridade':           s.prioridade || '',
+      'Status':               s.status || '',
+      'Solicitante':          s.solicitante || '',
+      'Quantidade':           s.quantidade_solicitada || 1,
+      'Valor Estimado (R$)':  s.valor_estimado != null ? Number(s.valor_estimado).toFixed(2).replace('.', ',') : '',
+      'Valor Aprovado (R$)':  s.valor_aprovado != null ? Number(s.valor_aprovado).toFixed(2).replace('.', ',') : '',
+      'Valor Final (R$)':     s.valor_final    != null ? Number(s.valor_final).toFixed(2).replace('.', ',')    : '',
+      'Fornecedor':           s.fornecedor_escolhido || '',
+      'Centro de Custo':      s.centro_custo || '',
+      'Previsão de Entrega':  s.data_previsao_entrega ? new Date(s.data_previsao_entrega + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      'Data Recebimento':     s.data_recebimento ? new Date(s.data_recebimento + 'T00:00:00').toLocaleDateString('pt-BR') : '',
+      'Justificativa':        s.justificativa || '',
+      'Observações':          s.observacoes || '',
+    }));
+    const ws = XLSX.utils.json_to_sheet(data);
+    ws['!cols'] = [16, 32, 14, 12, 20, 24, 10, 20, 20, 18, 26, 18, 18, 18, 40, 40].map(w => ({ wch: w }));
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Aquisições TI");
+    XLSX.writeFile(wb, 'Aquisicoes_TI_Avanco.xlsx');
+    showToast(`Excel exportado — ${filteredSolicitacoes.length} solicitações!`, "success");
   };
 
   const exportContratosToExcel = () => {
@@ -1032,6 +1210,17 @@ function App() {
     });
   }, [contratos, filterContratoText, filterContratoStatus, filterContratoTipo]);
 
+  const filteredSolicitacoes = React.useMemo(() => {
+    return solicitacoes.filter(s => {
+      const searchStr = `${s.titulo} ${s.numero_solicitacao || ''} ${s.solicitante || ''} ${s.fornecedor_escolhido || ''} ${s.centro_custo || ''}`.toLowerCase();
+      const matchesSearch = searchStr.includes(filterSolicitacaoText.toLowerCase());
+      const matchesStatus = filterSolicitacaoStatus === 'Todos' || s.status === filterSolicitacaoStatus;
+      const matchesPrioridade = filterSolicitacaoPrioridade === 'Todos' || s.prioridade === filterSolicitacaoPrioridade;
+      const matchesCategoria = filterSolicitacaoCategoria === 'Todos' || s.categoria === filterSolicitacaoCategoria;
+      return matchesSearch && matchesStatus && matchesPrioridade && matchesCategoria;
+    });
+  }, [solicitacoes, filterSolicitacaoText, filterSolicitacaoStatus, filterSolicitacaoPrioridade, filterSolicitacaoCategoria]);
+
   return (
     <div className="app-container">
       {/* Sidebar de Navegação Lateral */}
@@ -1069,6 +1258,13 @@ function App() {
             Importar Excel
           </div>
           <div
+            className={`nav-item ${activeTab === 'aquisicao' ? 'active' : ''}`}
+            onClick={() => setActiveTab('aquisicao')}
+          >
+            <ShoppingCart size={20} />
+            Aquisição
+          </div>
+          <div
             className={`nav-item ${activeTab === 'relatorios' ? 'active' : ''}`}
             onClick={() => setActiveTab('relatorios')}
           >
@@ -1093,7 +1289,8 @@ function App() {
               {activeTab === 'dashboard' ? 'Dashboard de Inventário' :
                activeTab === 'colaboradores' ? 'Gestão de Colaboradores' :
                activeTab === 'importar' ? 'Importação Inteligente Excel' :
-               activeTab === 'contratos' ? 'Contratos de T.I.' : 'Relatórios Estratégicos'}
+               activeTab === 'contratos' ? 'Contratos de T.I.' :
+               activeTab === 'aquisicao' ? 'Aquisição de Material' : 'Relatórios Estratégicos'}
             </h1>
             <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
           </header>
@@ -1955,6 +2152,234 @@ function App() {
               </div>
             )}
           </>
+        ) : activeTab === 'aquisicao' ? (
+          /* ============================================================
+             ABA DE AQUISIÇÃO DE MATERIAL
+          ============================================================ */
+          <>
+            {/* Alertas críticos */}
+            {solicitacaoStats.em_aberto > 0 && (
+              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap'}}>
+                <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '10px'}}>
+                  <AlertTriangle size={20} color="var(--warning)" style={{flexShrink: 0}} />
+                  <div>
+                    <div style={{fontWeight: '700', color: 'var(--warning)', fontSize: '0.9rem'}}>{solicitacaoStats.em_aberto} solicitação{solicitacaoStats.em_aberto > 1 ? 'ões' : ''} em andamento</div>
+                    <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Valor comprometido: R$ {(solicitacaoStats.valor_comprometido || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* KPI Cards */}
+            <div className="stats-grid" style={{marginBottom: '1rem'}}>
+              <div className="stat-card">
+                <div className="stat-label">Total de Solicitações</div>
+                <div className="stat-value">{solicitacaoStats.total}</div>
+                <ClipboardList size={24} color="var(--accent)" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card" style={{borderColor: solicitacaoStats.em_aberto > 0 ? 'rgba(245,158,11,0.3)' : undefined}}>
+                <div className="stat-label">Em Aberto</div>
+                <div className="stat-value" style={{color: solicitacaoStats.em_aberto > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{solicitacaoStats.em_aberto}</div>
+                <ListChecks size={24} color={solicitacaoStats.em_aberto > 0 ? 'var(--warning)' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Recebidas</div>
+                <div className="stat-value" style={{color: 'var(--success)'}}>{solicitacaoStats.recebidos}</div>
+                <PackageCheck size={24} color="var(--success)" style={{marginTop: 'auto'}} />
+              </div>
+              <div className="stat-card">
+                <div className="stat-label">Valor Total Gasto</div>
+                <div className="stat-value" style={{fontSize: '1.1rem'}}>R$ {(solicitacaoStats.valor_gasto_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+                <TrendingDown size={24} color="#8b5cf6" style={{marginTop: 'auto'}} />
+              </div>
+            </div>
+
+            {/* Charts */}
+            <div className="dashboard-row" style={{marginBottom: '1.5rem'}}>
+              <div className="chart-container">
+                <h3>Gastos por Categoria (Recebidos)</h3>
+                <div style={{height: '260px'}}>
+                  {(solicitacaoStats.gastos_por_categoria || []).length > 0 ? (
+                    <SafeChart>
+                      <BarChart data={solicitacaoStats.gastos_por_categoria} margin={{top: 10, right: 20, left: 40, bottom: 20}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis dataKey="categoria" stroke="#94a3b8" tick={{fontSize: 11}} />
+                        <YAxis stroke="#94a3b8" tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+                        <Tooltip contentStyle={{backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px'}} formatter={v => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`} />
+                        <Bar dataKey="valor" fill="#8b5cf6" radius={[4,4,0,0]} />
+                      </BarChart>
+                    </SafeChart>
+                  ) : (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontSize:'0.9rem'}}>
+                      <Inbox size={32} style={{marginRight:'0.5rem', opacity: 0.4}} /> Nenhum material recebido ainda.
+                    </div>
+                  )}
+                </div>
+              </div>
+              <div className="chart-container">
+                <h3>Funil de Status das Solicitações</h3>
+                <div style={{height: '260px'}}>
+                  {solicitacaoStats.total > 0 ? (
+                    <SafeChart>
+                      <BarChart data={(solicitacaoStats.funil_status || []).filter(f => f.quantidade > 0)} layout="vertical" margin={{top: 5, right: 30, left: 100, bottom: 5}}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+                        <XAxis type="number" stroke="#94a3b8" allowDecimals={false} />
+                        <YAxis type="category" dataKey="status" stroke="#94a3b8" tick={{fontSize: 11}} width={95} />
+                        <Tooltip contentStyle={{backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px'}} />
+                        <Bar dataKey="quantidade" fill="var(--accent)" radius={[0,4,4,0]} />
+                      </BarChart>
+                    </SafeChart>
+                  ) : (
+                    <div style={{display:'flex',alignItems:'center',justifyContent:'center',height:'100%',color:'var(--text-muted)',fontSize:'0.9rem'}}>
+                      <Inbox size={32} style={{marginRight:'0.5rem', opacity: 0.4}} /> Nenhuma solicitação cadastrada.
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Filtros e Ações */}
+            <div style={{display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'center', marginBottom:'1rem'}}>
+              <div style={{position:'relative', flex:'1', minWidth:'200px'}}>
+                <Search size={16} style={{position:'absolute', left:'0.75rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)'}} />
+                <input style={{paddingLeft:'2.2rem', width:'100%'}} placeholder="Buscar por título, nº, solicitante..." value={filterSolicitacaoText} onChange={e => setFilterSolicitacaoText(e.target.value)} />
+              </div>
+              <select value={filterSolicitacaoStatus} onChange={e => setFilterSolicitacaoStatus(e.target.value)} style={{minWidth:'160px'}}>
+                <option value="Todos">Todos os Status</option>
+                {SOLICITACAO_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+              </select>
+              <select value={filterSolicitacaoPrioridade} onChange={e => setFilterSolicitacaoPrioridade(e.target.value)} style={{minWidth:'140px'}}>
+                <option value="Todos">Todas Prioridades</option>
+                {SOLICITACAO_PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
+              </select>
+              <select value={filterSolicitacaoCategoria} onChange={e => setFilterSolicitacaoCategoria(e.target.value)} style={{minWidth:'150px'}}>
+                <option value="Todos">Todas Categorias</option>
+                {SOLICITACAO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
+              <button className="btn-secondary" onClick={exportSolicitacoesToExcel} title="Exportar Excel">
+                <FileSpreadsheet size={16} /> Excel
+              </button>
+              <button className="btn-primary gradient-btn" onClick={openCreateSolicitacao}>
+                <PackagePlus size={16} /> Nova Solicitação
+              </button>
+            </div>
+
+            {/* Info linha */}
+            <div style={{fontSize:'0.8rem', color:'var(--text-muted)', marginBottom:'0.75rem', display:'flex', gap:'1.5rem'}}>
+              <span>{filteredSolicitacoes.length} solicitação{filteredSolicitacoes.length !== 1 ? 'ões' : ''} encontrada{filteredSolicitacoes.length !== 1 ? 's' : ''}</span>
+              {filterSolicitacaoStatus === 'Todos' && (
+                <>
+                  <span style={{color:'var(--warning)'}}>Em Aberto: {solicitacaoStats.em_aberto}</span>
+                  <span style={{color:'var(--success)'}}>Recebidas: {solicitacaoStats.recebidos}</span>
+                </>
+              )}
+            </div>
+
+            {/* Tabela */}
+            {filteredSolicitacoes.length === 0 ? (
+              <div style={{textAlign:'center', padding:'4rem', color:'var(--text-muted)', border:'1px dashed var(--border)', borderRadius:'12px'}}>
+                <ShoppingCart size={40} style={{opacity:0.3, marginBottom:'0.75rem'}} />
+                <div style={{fontWeight:'600', marginBottom:'0.25rem'}}>Nenhuma solicitação encontrada</div>
+                <div style={{fontSize:'0.85rem'}}>Clique em "Nova Solicitação" para registrar uma requisição de material.</div>
+              </div>
+            ) : (
+              <div className="table-container">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Nº / Data</th>
+                      <th>Título</th>
+                      <th>Categoria</th>
+                      <th>Prioridade</th>
+                      <th>Solicitante</th>
+                      <th>Status</th>
+                      <th>Qtd</th>
+                      <th>Valor Estimado</th>
+                      <th>Previsão</th>
+                      <th style={{textAlign:'center'}}>Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredSolicitacoes.map(s => {
+                      const priorColor = {Baixa:'#22c55e', Média:'#38bdf8', Alta:'#f59e0b', Crítica:'#ef4444'}[s.prioridade] || '#94a3b8';
+                      const statusColor = {
+                        'Rascunho': '#94a3b8',
+                        'Aguard. Aprovação': '#f59e0b',
+                        'Aprovado': '#22c55e',
+                        'Em Cotação': '#38bdf8',
+                        'Em Aquisição': '#8b5cf6',
+                        'Recebido': '#22c55e',
+                        'Cancelado': '#ef4444',
+                      }[s.status] || '#94a3b8';
+                      const statusBg = {
+                        'Rascunho': 'rgba(148,163,184,0.1)',
+                        'Aguard. Aprovação': 'rgba(245,158,11,0.1)',
+                        'Aprovado': 'rgba(34,197,94,0.1)',
+                        'Em Cotação': 'rgba(56,189,248,0.1)',
+                        'Em Aquisição': 'rgba(139,92,246,0.1)',
+                        'Recebido': 'rgba(34,197,94,0.12)',
+                        'Cancelado': 'rgba(239,68,68,0.1)',
+                      }[s.status] || 'rgba(148,163,184,0.1)';
+                      return (
+                        <tr key={s.id}>
+                          <td>
+                            <div style={{display:'flex', flexDirection:'column', gap:'2px'}}>
+                              <span style={{fontWeight:'700', fontSize:'0.82rem', color:'var(--accent)', fontFamily:'monospace'}}>{s.numero_solicitacao}</span>
+                              <span style={{fontSize:'0.72rem', color:'var(--text-muted)'}}>
+                                {s.data_solicitacao ? new Date(s.data_solicitacao + 'T00:00:00').toLocaleDateString('pt-BR') : '—'}
+                              </span>
+                            </div>
+                          </td>
+                          <td>
+                            <div style={{maxWidth:'220px'}}>
+                              <div style={{fontWeight:'600', fontSize:'0.88rem', whiteSpace:'nowrap', overflow:'hidden', textOverflow:'ellipsis'}}>{s.titulo}</div>
+                              {s.centro_custo && <div style={{fontSize:'0.72rem', color:'var(--text-muted)'}}><Tag size={10} style={{marginRight:'3px'}} />{s.centro_custo}</div>}
+                            </div>
+                          </td>
+                          <td>
+                            <span style={{fontSize:'0.78rem', fontWeight:'600', padding:'2px 8px', borderRadius:'6px', backgroundColor:'rgba(37,99,235,0.1)', color:'var(--accent)', border:'1px solid rgba(37,99,235,0.2)'}}>
+                              {s.categoria}
+                            </span>
+                          </td>
+                          <td>
+                            <span style={{fontSize:'0.78rem', fontWeight:'700', padding:'2px 8px', borderRadius:'6px', backgroundColor:`${priorColor}18`, color:priorColor, border:`1px solid ${priorColor}40`}}>
+                              {s.prioridade}
+                            </span>
+                          </td>
+                          <td style={{fontSize:'0.85rem', color: s.solicitante ? 'var(--text-main)' : 'var(--text-muted)'}}>
+                            {s.solicitante || <span style={{opacity:0.4, fontStyle:'italic'}}>—</span>}
+                          </td>
+                          <td>
+                            <span style={{display:'inline-flex', alignItems:'center', gap:'0.3rem', fontSize:'0.78rem', fontWeight:'700', padding:'3px 10px', borderRadius:'999px', backgroundColor:statusBg, color:statusColor, border:`1px solid ${statusColor}40`}}>
+                              <CircleDot size={10} />
+                              {s.status}
+                            </span>
+                          </td>
+                          <td style={{textAlign:'center', fontWeight:'600'}}>{s.quantidade_solicitada || 1}</td>
+                          <td style={{fontWeight:'600', fontSize:'0.88rem', color: s.valor_estimado ? 'var(--text-main)' : 'var(--text-muted)'}}>
+                            {s.valor_estimado != null ? `R$ ${Number(s.valor_estimado).toLocaleString('pt-BR', {minimumFractionDigits: 2})}` : <span style={{opacity:0.4}}>—</span>}
+                          </td>
+                          <td style={{fontSize:'0.83rem'}}>
+                            {s.data_previsao_entrega ? new Date(s.data_previsao_entrega + 'T00:00:00').toLocaleDateString('pt-BR') : <span style={{color:'var(--text-muted)', opacity:0.4}}>—</span>}
+                          </td>
+                          <td style={{textAlign:'center'}} onClick={e => e.stopPropagation()}>
+                            <div style={{display:'flex', justifyContent:'center', gap:'0.25rem'}}>
+                              <button className="btn-icon" onClick={() => openEditSolicitacao(s)} title="Editar Solicitação">
+                                <Edit2 size={15} />
+                              </button>
+                              <button className="btn-icon" style={{color:'#ef4444'}} onClick={() => handleDeleteSolicitacao(s.id)} title="Excluir Solicitação">
+                                <Trash2 size={15} />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </>
         ) : (
           /* Aba de Relatórios e Gráficos */
           <div className="reports-grid">
@@ -2182,6 +2607,200 @@ function App() {
 
                 <button type="submit" className="btn-primary gradient-btn" style={{width: '100%', justifyContent: 'center', marginTop: '1rem'}}>
                   Salvar Equipamento
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL CRIAR SOLICITAÇÃO --- */}
+        {isSolicitacaoModalOpen && (
+          <div className="modal-overlay" onClick={() => setIsSolicitacaoModalOpen(false)}>
+            <div className="modal" style={{maxWidth: '760px'}} onClick={e => e.stopPropagation()}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+                  <PackagePlus size={22} color="var(--accent)" />
+                  <h2 style={{margin:0}}>Nova Solicitação de Aquisição</h2>
+                </div>
+                <X size={24} style={{cursor:'pointer'}} onClick={() => setIsSolicitacaoModalOpen(false)} />
+              </div>
+              <form onSubmit={handleCreateSolicitacao}>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Nº Solicitação</label>
+                    <input value={solicitacaoFormData.numero_solicitacao} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, numero_solicitacao: e.target.value})} placeholder="REQ-AVAN-001" />
+                  </div>
+                  <div className="form-group">
+                    <label>Título *</label>
+                    <input required value={solicitacaoFormData.titulo} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, titulo: e.target.value})} placeholder="Ex: Aquisição de 3 Notebooks para equipe de TI" />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Categoria *</label>
+                    <select required value={solicitacaoFormData.categoria} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, categoria: e.target.value})}>
+                      {SOLICITACAO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Prioridade</label>
+                    <select value={solicitacaoFormData.prioridade} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, prioridade: e.target.value})}>
+                      {SOLICITACAO_PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" min="1" value={solicitacaoFormData.quantidade_solicitada} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, quantidade_solicitada: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Solicitante</label>
+                    <input value={solicitacaoFormData.solicitante} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, solicitante: e.target.value})} placeholder="Nome do responsável" />
+                  </div>
+                  <div className="form-group">
+                    <label>Centro de Custo</label>
+                    <input value={solicitacaoFormData.centro_custo} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, centro_custo: e.target.value})} placeholder="Ex: TI / Obras / ADM" />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Estimado (R$)</label>
+                    <input type="number" step="0.01" value={solicitacaoFormData.valor_estimado} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, valor_estimado: e.target.value})} placeholder="0,00" />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Data da Solicitação</label>
+                    <input type="date" value={solicitacaoFormData.data_solicitacao} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, data_solicitacao: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Previsão de Entrega</label>
+                    <input type="date" value={solicitacaoFormData.data_previsao_entrega} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, data_previsao_entrega: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Justificativa de Negócio</label>
+                  <textarea rows="2" value={solicitacaoFormData.justificativa} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, justificativa: e.target.value})} placeholder="Descreva por que este material é necessário e o impacto da não aquisição..." />
+                </div>
+                <div className="form-group">
+                  <label>Descrição Técnica</label>
+                  <textarea rows="2" value={solicitacaoFormData.descricao} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, descricao: e.target.value})} placeholder="Especificações técnicas, marca de referência, modelo sugerido..." />
+                </div>
+                <button type="submit" className="btn-primary gradient-btn" style={{width:'100%', justifyContent:'center', marginTop:'1rem'}}>
+                  <PackagePlus size={16} /> Registrar Solicitação
+                </button>
+              </form>
+            </div>
+          </div>
+        )}
+
+        {/* --- MODAL EDITAR SOLICITAÇÃO --- */}
+        {isSolicitacaoEditModalOpen && editingSolicitacao && (
+          <div className="modal-overlay" onClick={() => setIsSolicitacaoEditModalOpen(false)}>
+            <div className="modal" style={{maxWidth: '760px'}} onClick={e => e.stopPropagation()}>
+              <div style={{display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.5rem'}}>
+                <div style={{display:'flex', alignItems:'center', gap:'0.75rem'}}>
+                  <Edit2 size={22} color="var(--accent)" />
+                  <h2 style={{margin:0}}>Editar Solicitação — <span style={{fontFamily:'monospace', color:'var(--accent)'}}>{editingSolicitacao.numero_solicitacao}</span></h2>
+                </div>
+                <X size={24} style={{cursor:'pointer'}} onClick={() => setIsSolicitacaoEditModalOpen(false)} />
+              </div>
+              <form onSubmit={handleUpdateSolicitacao}>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 2fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Nº Solicitação</label>
+                    <input value={solicitacaoFormData.numero_solicitacao} readOnly style={{opacity:0.6, cursor:'not-allowed'}} />
+                  </div>
+                  <div className="form-group">
+                    <label>Título *</label>
+                    <input required value={solicitacaoFormData.titulo} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, titulo: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Categoria *</label>
+                    <select required value={solicitacaoFormData.categoria} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, categoria: e.target.value})}>
+                      {SOLICITACAO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Prioridade</label>
+                    <select value={solicitacaoFormData.prioridade} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, prioridade: e.target.value})}>
+                      {SOLICITACAO_PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
+                    </select>
+                  </div>
+                  <div className="form-group">
+                    <label>Status</label>
+                    <select value={solicitacaoFormData.status} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, status: e.target.value})}>
+                      {SOLICITACAO_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                    </select>
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Solicitante</label>
+                    <input value={solicitacaoFormData.solicitante} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, solicitante: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Aprovador</label>
+                    <input value={solicitacaoFormData.aprovador} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, aprovador: e.target.value})} placeholder="Nome do aprovador" />
+                  </div>
+                  <div className="form-group">
+                    <label>Fornecedor Escolhido</label>
+                    <input value={solicitacaoFormData.fornecedor_escolhido} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, fornecedor_escolhido: e.target.value})} placeholder="Nome do fornecedor" />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Centro de Custo</label>
+                    <input value={solicitacaoFormData.centro_custo} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, centro_custo: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Quantidade</label>
+                    <input type="number" min="1" value={solicitacaoFormData.quantidade_solicitada} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, quantidade_solicitada: e.target.value})} />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Valor Estimado (R$)</label>
+                    <input type="number" step="0.01" value={solicitacaoFormData.valor_estimado} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, valor_estimado: e.target.value})} placeholder="0,00" />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Aprovado (R$)</label>
+                    <input type="number" step="0.01" value={solicitacaoFormData.valor_aprovado} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, valor_aprovado: e.target.value})} placeholder="0,00" />
+                  </div>
+                  <div className="form-group">
+                    <label>Valor Final Pago (R$)</label>
+                    <input type="number" step="0.01" value={solicitacaoFormData.valor_final} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, valor_final: e.target.value})} placeholder="0,00" />
+                  </div>
+                </div>
+                <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:'1rem'}}>
+                  <div className="form-group">
+                    <label>Data Solicitação</label>
+                    <input type="date" value={solicitacaoFormData.data_solicitacao} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, data_solicitacao: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Data Aprovação</label>
+                    <input type="date" value={solicitacaoFormData.data_aprovacao} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, data_aprovacao: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Previsão de Entrega</label>
+                    <input type="date" value={solicitacaoFormData.data_previsao_entrega} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, data_previsao_entrega: e.target.value})} />
+                  </div>
+                  <div className="form-group">
+                    <label>Data Recebimento</label>
+                    <input type="date" value={solicitacaoFormData.data_recebimento} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, data_recebimento: e.target.value})} />
+                  </div>
+                </div>
+                <div className="form-group">
+                  <label>Justificativa</label>
+                  <textarea rows="2" value={solicitacaoFormData.justificativa} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, justificativa: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Observações</label>
+                  <textarea rows="2" value={solicitacaoFormData.observacoes} onChange={e => setSolicitacaoFormData({...solicitacaoFormData, observacoes: e.target.value})} placeholder="Cotações recebidas, fornecedores avaliados, decisões tomadas..." />
+                </div>
+                <button type="submit" className="btn-primary gradient-btn" style={{width:'100%', justifyContent:'center', marginTop:'1rem'}}>
+                  <ArrowRight size={16} /> Salvar Alterações
                 </button>
               </form>
             </div>

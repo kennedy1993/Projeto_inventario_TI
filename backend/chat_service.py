@@ -56,12 +56,13 @@ def obter_dados_completos_banco():
         return abrev.get(s, s)
 
     try:
-        from APP import SessionLocal, Ativo, Colaborador, Setor, Empresa
+        from APP import SessionLocal, Ativo, Colaborador, SolicitacaoCompra
         db = SessionLocal()
         try:
             # 1. Carrega dados de forma eficiente com joins para evitar queries N+1
             colaboradores = db.query(Colaborador).options(joinedload(Colaborador.setor)).all()
             ativos = db.query(Ativo).options(joinedload(Ativo.colaborador).joinedload(Colaborador.setor)).all()
+            solicitacoes = db.query(SolicitacaoCompra).all()
             
             # IDs de colaboradores vinculados a algum ativo
             colabs_ativos_ids = {a.colaborador_id for a in ativos if a.colaborador_id is not None}
@@ -110,6 +111,20 @@ def obter_dados_completos_banco():
                 )
             ativos_str = "\n".join(lista_ativos)
             
+            # 6. Formata Solicitações de Aquisição (apenas em aberto e recentes)
+            sol_em_aberto = [s for s in solicitacoes if s.status in ("Aguard. Aprovação", "Aprovado", "Em Cotação", "Em Aquisição")]
+            sol_recebidos = [s for s in solicitacoes if s.status == "Recebido"]
+            sol_valor_comprometido = sum(float(s.valor_aprovado or s.valor_estimado or 0) for s in sol_em_aberto)
+            sol_valor_gasto = sum(float(s.valor_final or s.valor_aprovado or s.valor_estimado or 0) for s in sol_recebidos)
+            lista_sol = ["Nº|TÍTULO|CATEG|PRIOR|STATUS|SOLICITANTE|VALOR_EST"]
+            for s in sol_em_aberto[:20]:
+                lista_sol.append(
+                    f"{c(s.numero_solicitacao)}|{c(s.titulo)}|{c(s.categoria)}|"
+                    f"{c(s.prioridade)}|{c(s.status)}|{c(s.solicitante)}|"
+                    f"R${float(s.valor_estimado or 0):,.0f}"
+                )
+            sol_str = "\n".join(lista_sol)
+
             contexto = (
                 f"=== ESTATÍSTICAS GERAIS DO INVENTÁRIO ===\n"
                 f"- Total de Equipamentos Cadastrados: {total_ativos}\n"
@@ -119,13 +134,23 @@ def obter_dados_completos_banco():
                 f"- Equipamentos em Manutenção: {ativos_manutencao}\n"
                 f"- Equipamentos por Categoria: {contagem_tipos}\n"
                 f"- Valor Total do Inventário: R$ {soma_valor:,.2f}\n\n"
-                
+
+                f"=== AQUISIÇÕES DE MATERIAL ===\n"
+                f"- Total de Solicitações: {len(solicitacoes)}\n"
+                f"- Em Aberto (aguardando/aprovado/cotação/aquisição): {len(sol_em_aberto)}\n"
+                f"- Recebidas: {len(sol_recebidos)}\n"
+                f"- Valor Comprometido (em andamento): R$ {sol_valor_comprometido:,.2f}\n"
+                f"- Valor Total Gasto (recebidos): R$ {sol_valor_gasto:,.2f}\n\n"
+
+                f"=== SOLICITAÇÕES EM ABERTO ===\n"
+                f"{sol_str}\n\n"
+
                 f"=== EMAILS DE CONTATO ===\n"
                 f"{emails_str}\n\n"
-                
+
                 f"=== COLABORADORES CADASTRADOS SEM EQUIPAMENTO ATRIBUÍDO ===\n"
                 f"{colabs_str}\n\n"
-                
+
                 f"=== ATIVOS / EQUIPAMENTOS ===\n"
                 f"{ativos_str}\n"
             )

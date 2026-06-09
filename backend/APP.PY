@@ -123,6 +123,32 @@ class Contrato(Base):
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
+class SolicitacaoCompra(Base):
+    __tablename__ = "solicitacoes_compra"
+    id = Column(Integer, primary_key=True, index=True)
+    numero_solicitacao = Column(String, unique=True, index=True)
+    titulo = Column(String, nullable=False)
+    descricao = Column(String, nullable=True)
+    categoria = Column(String, nullable=False)
+    prioridade = Column(String, default="Média")
+    status = Column(String, default="Rascunho")
+    quantidade_solicitada = Column(Integer, default=1)
+    valor_estimado = Column(Numeric(15, 2), nullable=True)
+    valor_aprovado = Column(Numeric(15, 2), nullable=True)
+    valor_final = Column(Numeric(15, 2), nullable=True)
+    fornecedor_escolhido = Column(String, nullable=True)
+    solicitante = Column(String, nullable=True)
+    aprovador = Column(String, nullable=True)
+    justificativa = Column(String, nullable=True)
+    observacoes = Column(String, nullable=True)
+    centro_custo = Column(String, nullable=True)
+    data_solicitacao = Column(Date, nullable=True)
+    data_aprovacao = Column(Date, nullable=True)
+    data_previsao_entrega = Column(Date, nullable=True)
+    data_recebimento = Column(Date, nullable=True)
+    created_at = Column(DateTime, default=datetime.now)
+    updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
+
 # Criar as tabelas no banco de dados automaticamente (após as tabelas estarem definidas no script Python)
 Base.metadata.create_all(bind=engine)
 
@@ -303,6 +329,49 @@ class ContratoUpdate(BaseModel):
     prazo_aviso_dias: Optional[int] = None
 
 
+class SolicitacaoCompraCreate(BaseModel):
+    numero_solicitacao: Optional[str] = None
+    titulo: str
+    descricao: Optional[str] = None
+    categoria: str
+    prioridade: Optional[str] = "Média"
+    status: Optional[str] = "Rascunho"
+    quantidade_solicitada: Optional[int] = 1
+    valor_estimado: Optional[float] = None
+    valor_aprovado: Optional[float] = None
+    valor_final: Optional[float] = None
+    fornecedor_escolhido: Optional[str] = None
+    solicitante: Optional[str] = None
+    aprovador: Optional[str] = None
+    justificativa: Optional[str] = None
+    observacoes: Optional[str] = None
+    centro_custo: Optional[str] = None
+    data_solicitacao: Optional[date] = None
+    data_aprovacao: Optional[date] = None
+    data_previsao_entrega: Optional[date] = None
+    data_recebimento: Optional[date] = None
+
+class SolicitacaoCompraUpdate(BaseModel):
+    titulo: Optional[str] = None
+    descricao: Optional[str] = None
+    categoria: Optional[str] = None
+    prioridade: Optional[str] = None
+    status: Optional[str] = None
+    quantidade_solicitada: Optional[int] = None
+    valor_estimado: Optional[float] = None
+    valor_aprovado: Optional[float] = None
+    valor_final: Optional[float] = None
+    fornecedor_escolhido: Optional[str] = None
+    solicitante: Optional[str] = None
+    aprovador: Optional[str] = None
+    justificativa: Optional[str] = None
+    observacoes: Optional[str] = None
+    centro_custo: Optional[str] = None
+    data_solicitacao: Optional[date] = None
+    data_aprovacao: Optional[date] = None
+    data_previsao_entrega: Optional[date] = None
+    data_recebimento: Optional[date] = None
+
 import logging
 import traceback
 
@@ -404,6 +473,21 @@ def obter_resumo_dashboard(db: Session = Depends(get_db)):
 
     soma_valor = sum(valor_por_tipo_dict.values())
 
+    # KPIs de Aquisição para o Dashboard
+    sol_em_aberto = db.query(SolicitacaoCompra).filter(
+        SolicitacaoCompra.status.in_(["Aguard. Aprovação", "Aprovado", "Em Cotação", "Em Aquisição"])
+    ).count()
+    sol_comprometidas = db.query(SolicitacaoCompra).filter(
+        SolicitacaoCompra.status.in_(["Aprovado", "Em Cotação", "Em Aquisição"])
+    ).all()
+    sol_valor_comprometido = sum(float(s.valor_aprovado or s.valor_estimado or 0) for s in sol_comprometidas)
+    sol_recebidos_ano = db.query(SolicitacaoCompra).filter(
+        SolicitacaoCompra.status == "Recebido",
+        SolicitacaoCompra.data_recebimento != None,
+        SolicitacaoCompra.data_recebimento >= date(hoje.year, 1, 1)
+    ).all()
+    sol_gasto_ano = sum(float(s.valor_final or s.valor_aprovado or s.valor_estimado or 0) for s in sol_recebidos_ano)
+
     return {
         "total_ativos": total,
         "ativos_em_uso": em_uso,
@@ -416,7 +500,10 @@ def obter_resumo_dashboard(db: Session = Depends(get_db)):
         "valor_por_tipo": [
             {"tipo": k, "valor": round(v, 2), "quantidade": count_por_tipo_dict[k]}
             for k, v in sorted(valor_por_tipo_dict.items(), key=lambda x: -x[1])
-        ]
+        ],
+        "sol_em_aberto": sol_em_aberto,
+        "sol_valor_comprometido": round(sol_valor_comprometido, 2),
+        "sol_gasto_ano": round(sol_gasto_ano, 2),
     }
 
 @app.get("/api/ativos")
@@ -1004,7 +1091,179 @@ def deletar_contrato(id: int, db: Session = Depends(get_db)):
     return {"message": "Contrato excluído com sucesso"}
 
 
-# --- 7. ENDPOINTS DE RELATÓRIOS ---
+# --- 7. ENDPOINTS DE AQUISIÇÃO DE MATERIAL ---
+
+def _serializar_solicitacao(s: SolicitacaoCompra) -> dict:
+    return {
+        "id": s.id,
+        "numero_solicitacao": s.numero_solicitacao,
+        "titulo": s.titulo,
+        "descricao": s.descricao,
+        "categoria": s.categoria,
+        "prioridade": s.prioridade,
+        "status": s.status,
+        "quantidade_solicitada": s.quantidade_solicitada,
+        "valor_estimado": float(s.valor_estimado) if s.valor_estimado else None,
+        "valor_aprovado": float(s.valor_aprovado) if s.valor_aprovado else None,
+        "valor_final": float(s.valor_final) if s.valor_final else None,
+        "fornecedor_escolhido": s.fornecedor_escolhido,
+        "solicitante": s.solicitante,
+        "aprovador": s.aprovador,
+        "justificativa": s.justificativa,
+        "observacoes": s.observacoes,
+        "centro_custo": s.centro_custo,
+        "data_solicitacao": s.data_solicitacao.isoformat() if s.data_solicitacao else None,
+        "data_aprovacao": s.data_aprovacao.isoformat() if s.data_aprovacao else None,
+        "data_previsao_entrega": s.data_previsao_entrega.isoformat() if s.data_previsao_entrega else None,
+        "data_recebimento": s.data_recebimento.isoformat() if s.data_recebimento else None,
+        "created_at": s.created_at.isoformat() if s.created_at else None,
+        "updated_at": s.updated_at.isoformat() if s.updated_at else None,
+    }
+
+def _gerar_numero_solicitacao(db: Session) -> str:
+    solicitacoes = db.query(SolicitacaoCompra.numero_solicitacao).filter(
+        SolicitacaoCompra.numero_solicitacao.like("REQ-AVAN-%")
+    ).all()
+    maior_num = 0
+    for (num,) in solicitacoes:
+        partes = num.split("-")
+        if len(partes) == 3 and partes[2].isdigit():
+            maior_num = max(maior_num, int(partes[2]))
+    return f"REQ-AVAN-{maior_num + 1:03d}"
+
+@app.get("/api/solicitacoes/stats")
+def stats_solicitacoes(db: Session = Depends(get_db)):
+    total = db.query(SolicitacaoCompra).count()
+    rascunhos = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Rascunho").count()
+    aguardando = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Aguard. Aprovação").count()
+    aprovados = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Aprovado").count()
+    em_cotacao = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Em Cotação").count()
+    em_aquisicao = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Em Aquisição").count()
+    recebidos = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Recebido").count()
+    cancelados = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Cancelado").count()
+
+    em_andamento_list = db.query(SolicitacaoCompra).filter(
+        SolicitacaoCompra.status.in_(["Aprovado", "Em Cotação", "Em Aquisição"])
+    ).all()
+    valor_comprometido = sum(float(s.valor_aprovado or s.valor_estimado or 0) for s in em_andamento_list)
+
+    recebidos_list = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.status == "Recebido").all()
+    valor_gasto_total = sum(float(s.valor_final or s.valor_aprovado or s.valor_estimado or 0) for s in recebidos_list)
+
+    # Gastos por categoria (apenas recebidos)
+    gastos_por_categoria: dict = {}
+    for s in recebidos_list:
+        cat = s.categoria or "Outro"
+        gastos_por_categoria[cat] = gastos_por_categoria.get(cat, 0) + float(s.valor_final or s.valor_aprovado or s.valor_estimado or 0)
+
+    return {
+        "total": total,
+        "rascunhos": rascunhos,
+        "aguardando_aprovacao": aguardando,
+        "aprovados": aprovados,
+        "em_cotacao": em_cotacao,
+        "em_aquisicao": em_aquisicao,
+        "recebidos": recebidos,
+        "cancelados": cancelados,
+        "em_aberto": aguardando + aprovados + em_cotacao + em_aquisicao,
+        "valor_comprometido": round(valor_comprometido, 2),
+        "valor_gasto_total": round(valor_gasto_total, 2),
+        "gastos_por_categoria": [
+            {"categoria": k, "valor": round(v, 2)}
+            for k, v in sorted(gastos_por_categoria.items(), key=lambda x: -x[1])
+        ],
+        "funil_status": [
+            {"status": "Aguard. Aprovação", "quantidade": aguardando},
+            {"status": "Aprovado", "quantidade": aprovados},
+            {"status": "Em Cotação", "quantidade": em_cotacao},
+            {"status": "Em Aquisição", "quantidade": em_aquisicao},
+            {"status": "Recebido", "quantidade": recebidos},
+            {"status": "Cancelado", "quantidade": cancelados},
+        ],
+    }
+
+@app.get("/api/solicitacoes/next-numero")
+def obter_proximo_numero_solicitacao(db: Session = Depends(get_db)):
+    return {"next_numero": _gerar_numero_solicitacao(db)}
+
+@app.get("/api/solicitacoes")
+def listar_solicitacoes(
+    status: Optional[str] = None,
+    prioridade: Optional[str] = None,
+    categoria: Optional[str] = None,
+    search: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    query = db.query(SolicitacaoCompra)
+    if status and status != "Todos":
+        query = query.filter(SolicitacaoCompra.status == status)
+    if prioridade and prioridade != "Todos":
+        query = query.filter(SolicitacaoCompra.prioridade == prioridade)
+    if categoria and categoria != "Todos":
+        query = query.filter(SolicitacaoCompra.categoria == categoria)
+    if search:
+        query = query.filter(or_(
+            SolicitacaoCompra.titulo.ilike(f"%{search}%"),
+            SolicitacaoCompra.numero_solicitacao.ilike(f"%{search}%"),
+            SolicitacaoCompra.solicitante.ilike(f"%{search}%"),
+            SolicitacaoCompra.fornecedor_escolhido.ilike(f"%{search}%"),
+            SolicitacaoCompra.centro_custo.ilike(f"%{search}%"),
+        ))
+    return [_serializar_solicitacao(s) for s in query.order_by(SolicitacaoCompra.created_at.desc()).all()]
+
+@app.post("/api/solicitacoes")
+def criar_solicitacao(data: SolicitacaoCompraCreate, db: Session = Depends(get_db)):
+    numero = data.numero_solicitacao or _gerar_numero_solicitacao(db)
+    nova = SolicitacaoCompra(
+        numero_solicitacao=numero,
+        titulo=data.titulo,
+        descricao=data.descricao,
+        categoria=data.categoria,
+        prioridade=data.prioridade or "Média",
+        status=data.status or "Rascunho",
+        quantidade_solicitada=data.quantidade_solicitada or 1,
+        valor_estimado=data.valor_estimado,
+        valor_aprovado=data.valor_aprovado,
+        valor_final=data.valor_final,
+        fornecedor_escolhido=data.fornecedor_escolhido,
+        solicitante=data.solicitante,
+        aprovador=data.aprovador,
+        justificativa=data.justificativa,
+        observacoes=data.observacoes,
+        centro_custo=data.centro_custo,
+        data_solicitacao=data.data_solicitacao or date.today(),
+        data_aprovacao=data.data_aprovacao,
+        data_previsao_entrega=data.data_previsao_entrega,
+        data_recebimento=data.data_recebimento,
+    )
+    db.add(nova)
+    db.commit()
+    db.refresh(nova)
+    return _serializar_solicitacao(nova)
+
+@app.put("/api/solicitacoes/{id}")
+def atualizar_solicitacao(id: int, data: SolicitacaoCompraUpdate, db: Session = Depends(get_db)):
+    solicitacao = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.id == id).first()
+    if not solicitacao:
+        raise HTTPException(status_code=404, detail="Solicitação não encontrada")
+    for key, value in data.model_dump(exclude_unset=True).items():
+        setattr(solicitacao, key, value)
+    solicitacao.updated_at = datetime.now()
+    db.commit()
+    db.refresh(solicitacao)
+    return _serializar_solicitacao(solicitacao)
+
+@app.delete("/api/solicitacoes/{id}")
+def deletar_solicitacao(id: int, db: Session = Depends(get_db)):
+    solicitacao = db.query(SolicitacaoCompra).filter(SolicitacaoCompra.id == id).first()
+    if not solicitacao:
+        raise HTTPException(status_code=404, detail="Solicitação não encontrada")
+    db.delete(solicitacao)
+    db.commit()
+    return {"message": "Solicitação excluída com sucesso"}
+
+
+# --- 8. ENDPOINTS DE RELATÓRIOS ---
 
 @app.get("/api/reports/valor-por-setor")
 def relatorio_valor_por_setor(db: Session = Depends(get_db)):
