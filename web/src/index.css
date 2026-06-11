@@ -21,23 +21,28 @@
 body {
   background-color: var(--bg-main);
   color: var(--text-main);
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 .app-container {
   display: flex;
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
 }
 
 /* Sidebar Styles */
 .sidebar {
   width: 260px;
+  height: 100vh;
+  overflow-y: auto;
   background-color: var(--bg-card);
   border-right: 1px solid var(--border);
   padding: 2rem 1.5rem;
   display: flex;
   flex-direction: column;
   gap: 2rem;
+  flex-shrink: 0;
 }
 
 .logo {
