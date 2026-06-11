@@ -555,6 +555,7 @@ def listar_ativos(
             "data_garantia": a.data_garantia.isoformat() if a.data_garantia else None,
             "observacao": a.observacao,
             "valor": float(a.valor) if a.valor else None,
+            "quantidade": a.quantidade if a.quantidade is not None else 1,
             "colaborador_id": a.colaborador_id,
             "colaborador": {
                 "id": a.colaborador.id,
@@ -638,6 +639,7 @@ def criar_ativo(ativo: AtivoCreate, db: Session = Depends(get_db)):
         "data_garantia": novo_ativo.data_garantia.isoformat() if novo_ativo.data_garantia else None,
         "observacao": novo_ativo.observacao,
         "valor": float(novo_ativo.valor) if novo_ativo.valor else None,
+        "quantidade": novo_ativo.quantidade if novo_ativo.quantidade is not None else 1,
         "colaborador_id": novo_ativo.colaborador_id,
         "colaborador": {
             "id": colab.id, "nome": colab.nome,
@@ -723,6 +725,7 @@ def atualizar_ativo(id: int, data: AtivoUpdate, db: Session = Depends(get_db)):
         "data_garantia": ativo.data_garantia.isoformat() if ativo.data_garantia else None,
         "observacao": ativo.observacao,
         "valor": float(ativo.valor) if ativo.valor else None,
+        "quantidade": ativo.quantidade if ativo.quantidade is not None else 1,
         "colaborador_id": ativo.colaborador_id,
         "colaborador": {
             "id": colab.id, "nome": colab.nome,
