@@ -81,6 +81,7 @@ class Ativo(Base):
     data_garantia = Column(Date, nullable=True)
     observacao = Column(String)
     valor = Column(Numeric(10, 2))
+    quantidade = Column(Integer, default=1)
     colaborador_id = Column(Integer, ForeignKey("colaboradores.id"), nullable=True)
     
     colaborador = relationship("Colaborador")
@@ -161,6 +162,7 @@ with engine.connect() as _conn:
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS fornecedor VARCHAR"))
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS data_aquisicao DATE"))
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS data_garantia DATE"))
+    _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS quantidade INTEGER DEFAULT 1"))
     # Normaliza e-mails vazios para NULL (evita violação de UNIQUE em cadastros sem e-mail)
     _conn.execute(_text("UPDATE colaboradores SET email_corporativo = NULL WHERE email_corporativo = ''"))
     _conn.commit()
@@ -186,6 +188,7 @@ class AtivoBase(BaseModel):
     data_garantia: Optional[date] = None
     observacao: Optional[str] = None
     valor: Optional[float] = None
+    quantidade: Optional[int] = 1
     colaborador_id: Optional[int] = None
 
 class AtivoCreate(AtivoBase):
@@ -208,6 +211,7 @@ class AtivoUpdate(BaseModel):
     data_garantia: Optional[date] = None
     observacao: Optional[str] = None
     valor: Optional[float] = None
+    quantidade: Optional[int] = None
     colaborador_id: Optional[int] = None
 
 class ColaboradorCreate(BaseModel):
@@ -267,6 +271,7 @@ class AtivoResponse(BaseModel):
     data_garantia: Any = None
     observacao: Any = None
     valor: Any = None
+    quantidade: Any = None
     colaborador_id: Any = None
     colaborador: Optional[ColaboradorSimple] = None
     model_config = ConfigDict(from_attributes=True)
