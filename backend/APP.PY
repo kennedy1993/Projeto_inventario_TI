@@ -447,11 +447,20 @@ def obter_resumo_dashboard(db: Session = Depends(get_db)):
     hoje = date.today()
     trinta_dias = hoje + timedelta(days=30)
 
-    total = db.query(Ativo).count()
-    em_uso = db.query(Ativo).filter(Ativo.status == "Em Uso").count()
-    estoque = db.query(Ativo).filter(Ativo.status == "Estoque").count()
-    manutencao = db.query(Ativo).filter(Ativo.status == "Manutenção").count()
-    descartados = db.query(Ativo).filter(Ativo.status == "Descartado").count()
+    # Para TONERs, soma o campo quantidade; para os demais, conta 1 por registro
+    _todos = db.query(Ativo.tipo, Ativo.status, Ativo.quantidade).all()
+    def _conta(registros, status=None):
+        return sum(
+            (r.quantidade or 1) if r.tipo == "TONER" else 1
+            for r in registros
+            if status is None or r.status == status
+        )
+
+    total      = _conta(_todos)
+    em_uso     = _conta(_todos, "Em Uso")
+    estoque    = _conta(_todos, "Estoque")
+    manutencao = _conta(_todos, "Manutenção")
+    descartados = _conta(_todos, "Descartado")
 
     garantia_vencida = db.query(Ativo).filter(
         Ativo.data_garantia != None,

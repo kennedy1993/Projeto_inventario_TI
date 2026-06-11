@@ -68,11 +68,12 @@ def obter_dados_completos_banco():
             colabs_ativos_ids = {a.colaborador_id for a in ativos if a.colaborador_id is not None}
             
             # 2. Estatísticas Consolidadas
-            total_ativos = len(ativos)
+            def _qtd(a): return (a.quantidade or 1) if a.tipo == "TONER" else 1
+            total_ativos = sum(_qtd(a) for a in ativos)
             total_colabs = len(colaboradores)
-            ativos_em_uso = sum(1 for a in ativos if a.status == "Em Uso")
-            ativos_estoque = sum(1 for a in ativos if a.status == "Estoque")
-            ativos_manutencao = sum(1 for a in ativos if a.status == "Manutenção")
+            ativos_em_uso = sum(_qtd(a) for a in ativos if a.status == "Em Uso")
+            ativos_estoque = sum(_qtd(a) for a in ativos if a.status == "Estoque")
+            ativos_manutencao = sum(_qtd(a) for a in ativos if a.status == "Manutenção")
             
             # Contagem de tipos
             tipos_dict = {}
