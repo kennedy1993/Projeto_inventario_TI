@@ -29,7 +29,7 @@ from datetime import datetime, date, timedelta
 import os
 SQLALCHEMY_DATABASE_URL = os.getenv(
     "DATABASE_URL",
-    "postgresql://postgres:30209713@localhost:5432/itam_avanco?application_name=itam_api"
+    "postgresql://postgres:postgres@localhost:5432/itam_avanco?application_name=itam_api"
 )
 
 engine = create_engine(SQLALCHEMY_DATABASE_URL)
@@ -230,6 +230,7 @@ class AtivoBulkImportItem(BaseModel):
     colaborador_nome: Optional[str] = None
     setor_nome: Optional[str] = None
     numero_serie: Optional[str] = None
+    numero_chip: Optional[str] = None
     fornecedor: Optional[str] = None
     data_aquisicao: Optional[date] = None
     data_garantia: Optional[date] = None
@@ -393,10 +394,7 @@ async def global_exception_handler(request, exc):
     from fastapi.responses import JSONResponse
     return JSONResponse(
         status_code=500,
-        content={
-            "error": "Internal Server Error",
-            "detail": str(exc)
-        }
+        content={"error": "Internal Server Error"}
     )
 
 # Configuração de CORS dinâmica para produção
@@ -589,8 +587,7 @@ def obter_proxima_tag(tipo: str = "NOTEBOOK", db: Session = Depends(get_db)):
         if len(partes) == 3 and partes[2].isdigit():
             maior_num = max(maior_num, int(partes[2]))
 
-    proxima = maior_num + 1
-    return {"next_tag": f"{prefixo}-AVAN-{proxima:03d}"}
+    return {"next_tag": f"{prefixo}-AVAN-{maior_num + 1:03d}"}
 
 
 # Rota para registar um novo equipamento no banco
@@ -839,9 +836,10 @@ def bulk_import_ativos(items: List[AtivoBulkImportItem], db: Session = Depends(g
             "valor": item.valor,
             "colaborador_id": colaborador_id,
             "numero_serie": item.numero_serie,
+            "numero_chip": item.numero_chip,
             "fornecedor": item.fornecedor,
             "data_aquisicao": item.data_aquisicao,
-            "data_garantia": item.data_garantia
+            "data_garantia": item.data_garantia,
         }
 
         if ativo:
@@ -897,13 +895,13 @@ def bulk_import_ativos(items: List[AtivoBulkImportItem], db: Session = Depends(g
 
 @app.get("/api/colaboradores")
 def listar_colaboradores(db: Session = Depends(get_db)):
-    colaboradores = db.query(Colaborador).all()
+    colaboradores = db.query(Colaborador).options(joinedload(Colaborador.setor)).all()
     return [
         {
-            "id": c.id, 
-            "nome": c.nome, 
-            "email": c.email_corporativo, 
-            "status": c.status, 
+            "id": c.id,
+            "nome": c.nome,
+            "email": c.email_corporativo,
+            "status": c.status,
             "setor_id": c.setor_id,
             "setor": c.setor.nome if c.setor else None
         } for c in colaboradores
@@ -911,10 +909,10 @@ def listar_colaboradores(db: Session = Depends(get_db)):
 
 @app.put("/api/colaboradores/{colaborador_id}")
 def atualizar_colaborador(colaborador_id: int, data: ColaboradorUpdate, db: Session = Depends(get_db)):
-    db_colab = db.query(Colaborador).filter(Colaborador.id == colaborador_id).first()
+    db_colab = db.query(Colaborador).options(joinedload(Colaborador.setor)).filter(Colaborador.id == colaborador_id).first()
     if not db_colab:
         raise HTTPException(status_code=404, detail="Colaborador não encontrado")
-    
+
     update_data = data.model_dump(exclude_unset=True)
     if "email_corporativo" in update_data:
         db_colab.email_corporativo = update_data["email_corporativo"] if update_data["email_corporativo"] else None
@@ -924,10 +922,17 @@ def atualizar_colaborador(colaborador_id: int, data: ColaboradorUpdate, db: Sess
         db_colab.setor_id = update_data["setor_id"]
     if "status" in update_data:
         db_colab.status = update_data["status"]
-    
+
     db.commit()
     db.refresh(db_colab)
-    return db_colab
+    return {
+        "id": db_colab.id,
+        "nome": db_colab.nome,
+        "email": db_colab.email_corporativo,
+        "status": db_colab.status,
+        "setor_id": db_colab.setor_id,
+        "setor": db_colab.setor.nome if db_colab.setor else None,
+    }
 
 # Rota para cadastrar um novo colaborador
 @app.post("/api/colaboradores")
@@ -947,7 +952,15 @@ def criar_colaborador(colab: ColaboradorCreate, db: Session = Depends(get_db)):
     db.add(novo_colab)
     db.commit()
     db.refresh(novo_colab)
-    return novo_colab
+    setor = db.query(Setor).filter(Setor.id == novo_colab.setor_id).first() if novo_colab.setor_id else None
+    return {
+        "id": novo_colab.id,
+        "nome": novo_colab.nome,
+        "email": novo_colab.email_corporativo,
+        "status": novo_colab.status,
+        "setor_id": novo_colab.setor_id,
+        "setor": setor.nome if setor else None,
+    }
 
 # Rota para excluir um colaborador e liberar/desatribuir seus ativos associados de forma inteligente
 @app.delete("/api/colaboradores/{colaborador_id}")
@@ -978,7 +991,8 @@ def deletar_colaborador(colaborador_id: int, db: Session = Depends(get_db)):
 
 @app.get("/api/setores")
 def listar_setores(db: Session = Depends(get_db)):
-    return db.query(Setor).all()
+    setores = db.query(Setor).all()
+    return [{"id": s.id, "nome": s.nome} for s in setores]
 
 # --- 6. ENDPOINTS DE CONTRATOS DE TI ---
 
@@ -1318,27 +1332,31 @@ def deletar_solicitacao(id: int, db: Session = Depends(get_db)):
 
 @app.get("/api/reports/valor-por-setor")
 def relatorio_valor_por_setor(db: Session = Depends(get_db)):
-    # Este relatório agrupa o valor dos ativos pelo setor do colaborador
-    ativos = db.query(Ativo).all()
-    report = {}
-    for a in ativos:
-        setor_nome = "Sem Setor"
-        if a.colaborador and a.colaborador.setor:
-            setor_nome = a.colaborador.setor.nome
-        
-        report[setor_nome] = report.get(setor_nome, 0) + float(a.valor or 0)
-    
-    return [{"setor": k, "valor": v} for k, v in report.items()]
+    from sqlalchemy import func
+    rows = (
+        db.query(
+            func.coalesce(Setor.nome, "Sem Setor").label("setor"),
+            func.coalesce(func.sum(Ativo.valor), 0).label("valor"),
+        )
+        .outerjoin(Colaborador, Ativo.colaborador_id == Colaborador.id)
+        .outerjoin(Setor, Colaborador.setor_id == Setor.id)
+        .group_by(Setor.nome)
+        .all()
+    )
+    return [{"setor": r.setor, "valor": round(float(r.valor), 2)} for r in rows]
 
 @app.get("/api/reports/ativos-por-tipo")
 def relatorio_ativos_por_tipo(db: Session = Depends(get_db)):
-    ativos = db.query(Ativo).all()
-    report = {}
-    for a in ativos:
-        tipo = a.tipo or "Não Definido"
-        report[tipo] = report.get(tipo, 0) + 1
-
-    return [{"tipo": k, "quantidade": v} for k, v in report.items()]
+    from sqlalchemy import func
+    rows = (
+        db.query(
+            func.coalesce(Ativo.tipo, "Não Definido").label("tipo"),
+            func.count(Ativo.id).label("quantidade"),
+        )
+        .group_by(Ativo.tipo)
+        .all()
+    )
+    return [{"tipo": r.tipo, "quantidade": r.quantidade} for r in rows]
 
 @app.get("/api/reports/garantia-status")
 def relatorio_garantia_status(db: Session = Depends(get_db)):
