@@ -1646,15 +1646,15 @@ function App() {
                   {filterTipo !== 'TONER' && <col style={{width: '8%'}} />}
                   <col style={{width: '6%'}} />
                   {filterTipo === 'CELULAR' && <col style={{width: '12%'}} />}
-                  {filterTipo === 'TONER' && <col style={{width: '8%'}} />}
-                  <col style={{width: '14%'}} />
+                  {filterTipo === 'TONER' && <col style={{width: '7%'}} />}
+                  <col style={{width: filterTipo === 'TONER' ? '26%' : '14%'}} />
                   <col style={{width: '11%'}} />
                   <col style={{width: '9%'}} />
                   <col style={{width: '7%'}} />
                   <col style={{width: '7%'}} />
                   <col style={{width: '7%'}} />
                   <col style={{width: '13%'}} />
-                  <col style={{width: '6%'}} />
+                  <col style={{width: '7%'}} />
                 </colgroup>
                 <thead>
                   <tr>
@@ -1710,8 +1710,19 @@ function App() {
                         </td>
                       )}
                       <td>
-                        <div style={{fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.marca} {ativo.modelo}</div>
-                        <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.especificacoes}</div>
+                        {filterTipo === 'TONER' ? (
+                          <>
+                            <div style={{fontWeight: '500', whiteSpace: 'normal', lineHeight: '1.35'}}>{ativo.marca} {ativo.modelo}</div>
+                            {ativo.especificacoes && (
+                              <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', marginTop: '0.15rem', whiteSpace: 'normal'}}>{ativo.especificacoes}</div>
+                            )}
+                          </>
+                        ) : (
+                          <>
+                            <div style={{fontWeight: '500', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.marca} {ativo.modelo}</div>
+                            <div style={{color: 'var(--text-muted)', fontSize: '0.75rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap'}}>{ativo.especificacoes}</div>
+                          </>
+                        )}
                       </td>
                       <td>
                         <div style={{display: 'flex', alignItems: 'center', gap: '0.4rem', overflow: 'hidden'}}>
