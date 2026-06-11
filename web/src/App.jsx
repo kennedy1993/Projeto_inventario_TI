@@ -733,6 +733,7 @@ function App() {
           <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
         </header>
 
+        <div className="page-body">
         {loading && activeTab !== 'importar' ? (
           <div style={{display: 'flex', justifyContent: 'center', padding: '5rem', color: 'var(--text-muted)'}}>
              Carregando informações do servidor...
@@ -973,20 +974,22 @@ function App() {
         ) : activeTab === 'colaboradores' ? (
           <>
             {/* Lista e Filtros de Colaboradores */}
-            <div className="filter-bar" style={{marginBottom: '1.5rem'}}>
-              <div className="search-box">
-                <Search size={18} />
-                <input 
-                  type="text" 
-                  placeholder="Pesquisar por colaborador ou setor..." 
-                  value={filterColab}
-                  onChange={e => setFilterColab(e.target.value)}
-                />
-              </div>
+            <div className="colabs-sticky-controls">
+              <div className="filter-bar" style={{marginBottom: 0}}>
+                <div className="search-box">
+                  <Search size={18} />
+                  <input
+                    type="text"
+                    placeholder="Pesquisar por colaborador ou setor..."
+                    value={filterColab}
+                    onChange={e => setFilterColab(e.target.value)}
+                  />
+                </div>
 
-              <button className="btn-primary gradient-btn" onClick={openCreateColab}>
-                <Plus size={20} /> Novo Colaborador
-              </button>
+                <button className="btn-primary gradient-btn" onClick={openCreateColab}>
+                  <Plus size={20} /> Novo Colaborador
+                </button>
+              </div>
             </div>
 
             <div className="table-container">
@@ -1231,6 +1234,7 @@ function App() {
             </div>
           </div>
         )}
+        </div>
 
         {/* --- MODAL NOVO ATIVO --- */}
         {isModalOpen && (
