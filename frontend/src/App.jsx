@@ -1550,9 +1550,10 @@ function App() {
             <div className="table-container">
               <table>
                 <colgroup>
-                  <col style={{width: '8%'}} />
+                  {filterTipo !== 'TONER' && <col style={{width: '8%'}} />}
                   <col style={{width: '6%'}} />
                   {filterTipo === 'CELULAR' && <col style={{width: '12%'}} />}
+                  {filterTipo === 'TONER' && <col style={{width: '8%'}} />}
                   <col style={{width: '14%'}} />
                   <col style={{width: '11%'}} />
                   <col style={{width: '9%'}} />
@@ -1564,7 +1565,9 @@ function App() {
                 </colgroup>
                 <thead>
                   <tr>
-                    <th onClick={() => requestSort('tag_patrimonio')}>TAG {sortConfig.key === 'tag_patrimonio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                    {filterTipo !== 'TONER' && (
+                      <th onClick={() => requestSort('tag_patrimonio')}>TAG {sortConfig.key === 'tag_patrimonio' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
+                    )}
                     <th onClick={() => requestSort('tipo')}>Tipo {sortConfig.key === 'tipo' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     {filterTipo === 'CELULAR' && (
                       <th>
@@ -1573,6 +1576,9 @@ function App() {
                           Chip
                         </div>
                       </th>
+                    )}
+                    {filterTipo === 'TONER' && (
+                      <th onClick={() => requestSort('quantidade')}>Qtd {sortConfig.key === 'quantidade' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     )}
                     <th onClick={() => requestSort('marca')}>Equipamento {sortConfig.key === 'marca' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
                     <th onClick={() => requestSort('colaborador')}>Colaborador {sortConfig.key === 'colaborador' ? (sortConfig.direction === 'asc' ? '↑' : '↓') : ''}</th>
@@ -1587,7 +1593,9 @@ function App() {
                 <tbody>
                   {filteredAtivos.map(ativo => (
                     <tr key={ativo.id} className="table-row-hover" onClick={() => handleOpenDrawer(ativo)}>
-                      <td style={{color: 'var(--accent)', fontWeight: '600'}}>{ativo.tag_patrimonio}</td>
+                      {filterTipo !== 'TONER' && (
+                        <td style={{color: 'var(--accent)', fontWeight: '600'}}>{ativo.tag_patrimonio}</td>
+                      )}
                       <td>
                         <span className="type-badge">{ativo.tipo || 'N/A'}</span>
                       </td>
@@ -1601,6 +1609,11 @@ function App() {
                           ) : (
                             <span style={{fontSize: '0.75rem', color: 'var(--text-muted)', fontStyle: 'italic'}}>Não cadastrado</span>
                           )}
+                        </td>
+                      )}
+                      {filterTipo === 'TONER' && (
+                        <td style={{fontWeight: '600', color: 'var(--accent)', textAlign: 'center'}}>
+                          {ativo.quantidade ?? 1}
                         </td>
                       )}
                       <td>
