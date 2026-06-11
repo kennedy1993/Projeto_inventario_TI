@@ -1523,28 +1523,53 @@ function App() {
             </div>{/* fim equipamentos-sticky-top */}
 
             <div style={{display: 'flex', gap: '1rem', marginBottom: '1.5rem'}}>
-              <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
-                <div className="stat-label">Itens Filtrados</div>
-                <div className="stat-value" style={{fontSize: '1.25rem'}}>{filteredAtivos.length}</div>
-              </div>
-              <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
-                <div className="stat-label">Valor Total Selecionado</div>
-                <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--success)'}}>
-                  R$ {filteredAtivos.reduce((acc, curr) => acc + (curr.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </div>
-              </div>
-              {avgNotebookValue > 0 && (
-                <div className="stat-card" style={{flex: 1, padding: '1rem', borderColor: 'rgba(245,158,11,0.3)'}}>
-                  <div className="stat-label" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
-                    <AlertTriangle size={13} color="var(--warning)" /> Média Notebooks
+              {filterTipo === 'TONER' ? (
+                <>
+                  <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
+                    <div className="stat-label">Modelos Cadastrados</div>
+                    <div className="stat-value" style={{fontSize: '1.25rem'}}>{filteredAtivos.length}</div>
+                    <div style={{fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>tipos distintos de toner</div>
                   </div>
-                  <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--warning)'}}>
-                    R$ {avgNotebookValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  <div className="stat-card" style={{flex: 1, padding: '1rem', borderColor: 'rgba(99,102,241,0.3)'}}>
+                    <div className="stat-label" style={{color: 'var(--accent)'}}>Total de Unidades</div>
+                    <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--accent)'}}>
+                      {filteredAtivos.reduce((acc, curr) => acc + (curr.quantidade || 1), 0)}
+                    </div>
+                    <div style={{fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>unidades em estoque</div>
                   </div>
-                  <div style={{fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>
-                    {ativos.filter(a => a.tipo === 'NOTEBOOK' && a.valor != null && a.valor > avgNotebookValue).length} acima da média
+                  <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
+                    <div className="stat-label">Valor Total Selecionado</div>
+                    <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--success)'}}>
+                      R$ {filteredAtivos.reduce((acc, curr) => acc + (curr.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </div>
                   </div>
-                </div>
+                </>
+              ) : (
+                <>
+                  <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
+                    <div className="stat-label">Itens Filtrados</div>
+                    <div className="stat-value" style={{fontSize: '1.25rem'}}>{filteredAtivos.length}</div>
+                  </div>
+                  <div className="stat-card" style={{flex: 1, padding: '1rem'}}>
+                    <div className="stat-label">Valor Total Selecionado</div>
+                    <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--success)'}}>
+                      R$ {filteredAtivos.reduce((acc, curr) => acc + (curr.valor || 0), 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </div>
+                  </div>
+                  {avgNotebookValue > 0 && (
+                    <div className="stat-card" style={{flex: 1, padding: '1rem', borderColor: 'rgba(245,158,11,0.3)'}}>
+                      <div className="stat-label" style={{display: 'flex', alignItems: 'center', gap: '0.4rem'}}>
+                        <AlertTriangle size={13} color="var(--warning)" /> Média Notebooks
+                      </div>
+                      <div className="stat-value" style={{fontSize: '1.25rem', color: 'var(--warning)'}}>
+                        R$ {avgNotebookValue.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </div>
+                      <div style={{fontSize: '0.72rem', color: 'var(--text-muted)', marginTop: '0.25rem'}}>
+                        {ativos.filter(a => a.tipo === 'NOTEBOOK' && a.valor != null && a.valor > avgNotebookValue).length} acima da média
+                      </div>
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
