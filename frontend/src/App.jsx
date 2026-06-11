@@ -1032,44 +1032,79 @@ function App() {
   const COLORS = ['#2563eb', '#8b5cf6', '#22c55e', '#f59e0b', '#ef4444', '#38bdf8', '#ec4899'];
 
   const exportToExcel = () => {
-    const hasChip = filteredAtivos.some(a => a.tipo === 'CELULAR');
+    const isToner = filterTipo === 'TONER';
+    const hasChip = !isToner && filteredAtivos.some(a => a.tipo === 'CELULAR');
     const filterSuffix = filterTipo !== 'Todos' ? `_${filterTipo}`
                        : filterStatus !== 'Todos' ? `_${filterStatus}`
                        : '';
 
     const dataToExport = filteredAtivos.map(a => {
       const row = {};
-      row['TAG Patrimônio']    = a.tag_patrimonio;
-      row['Tipo']              = a.tipo || '';
-      if (hasChip) row['Número do Chip'] = a.tipo === 'CELULAR' ? (a.numero_chip || '') : '';
-      row['Marca']             = a.marca || '';
-      row['Modelo']            = a.modelo || '';
-      row['Especificações']    = a.especificacoes || '';
-      row['Colaborador']       = a.colaborador?.nome || '';
-      row['Setor']             = a.colaborador?.setor || '';
-      row['Local']             = a.local_fisico || '';
-      row['Status']            = a.status || '';
-      row['Licença Windows']   = a.licenca_windows || '';
-      row['Licença Office']    = a.licenca_office || '';
-      row['Valor (R$)']        = a.valor ? Number(a.valor).toFixed(2).replace('.', ',') : '';
+      if (isToner) {
+        row['Quantidade']        = a.quantidade || 1;
+        row['Tipo']              = a.tipo || '';
+        row['Marca']             = a.marca || '';
+        row['Modelo']            = a.modelo || '';
+        row['Especificações']    = a.especificacoes || '';
+        row['Local']             = a.local_fisico || '';
+        row['Status']            = a.status || '';
+        row['Valor (R$)']        = a.valor ? Number(a.valor).toFixed(2).replace('.', ',') : '';
+        row['Observação']        = a.observacao || '';
+      } else {
+        row['TAG Patrimônio']    = a.tag_patrimonio;
+        row['Tipo']              = a.tipo || '';
+        if (hasChip) row['Número do Chip'] = a.tipo === 'CELULAR' ? (a.numero_chip || '') : '';
+        row['Marca']             = a.marca || '';
+        row['Modelo']            = a.modelo || '';
+        row['Especificações']    = a.especificacoes || '';
+        row['Colaborador']       = a.colaborador?.nome || '';
+        row['Setor']             = a.colaborador?.setor || '';
+        row['Local']             = a.local_fisico || '';
+        row['Status']            = a.status || '';
+        row['Licença Windows']   = a.licenca_windows || '';
+        row['Licença Office']    = a.licenca_office || '';
+        row['Valor (R$)']        = a.valor ? Number(a.valor).toFixed(2).replace('.', ',') : '';
+      }
       return row;
     });
 
+    if (isToner) {
+      const totalUnidades = filteredAtivos.reduce((acc, a) => acc + (a.quantidade || 1), 0);
+      dataToExport.push({});
+      dataToExport.push({
+        'Quantidade': totalUnidades,
+        'Tipo': '',
+        'Marca': 'TOTAL DE UNIDADES EM ESTOQUE',
+        'Modelo': '',
+        'Especificações': '',
+        'Local': '',
+        'Status': '',
+        'Valor (R$)': '',
+        'Observação': '',
+      });
+    }
+
     const ws = XLSX.utils.json_to_sheet(dataToExport);
 
-    // Larguras das colunas
-    const colW = [16, 12, 15, 14, 20, 35, 22, 18, 14, 12, 22, 18, 14];
-    if (hasChip) colW.splice(2, 0, 18);
-    ws['!cols'] = colW.map(w => ({ wch: w }));
+    if (isToner) {
+      const colW = [12, 8, 18, 22, 35, 16, 10, 14, 30];
+      ws['!cols'] = colW.map(w => ({ wch: w }));
+      // Destaca a linha de total (negrito via estilo não é suportado em xlsx puro, mas o valor já comunica)
+    } else {
+      const colW = [16, 12, 15, 14, 20, 35, 22, 18, 14, 12, 22, 18, 14];
+      if (hasChip) colW.splice(2, 0, 18);
+      ws['!cols'] = colW.map(w => ({ wch: w }));
+    }
 
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Ativos");
+    XLSX.utils.book_append_sheet(wb, ws, isToner ? "Toners" : "Ativos");
     XLSX.writeFile(wb, `Inventario_TI_Avanco${filterSuffix}.xlsx`);
-    showToast(`Exportação Excel concluída — ${filteredAtivos.length} itens exportados!`, "success");
+    showToast(`Exportação Excel concluída — ${filteredAtivos.length} modelos exportados!`, "success");
   };
 
   const exportToPDF = () => {
-    const hasChip = filteredAtivos.some(a => a.tipo === 'CELULAR');
+    const isToner = filterTipo === 'TONER';
+    const hasChip = !isToner && filteredAtivos.some(a => a.tipo === 'CELULAR');
     const filterLabel  = filterTipo !== 'Todos'   ? filterTipo
                        : filterStatus !== 'Todos' ? filterStatus
                        : filterLocal !== 'Todos'  ? filterLocal
@@ -1091,10 +1126,19 @@ function App() {
     doc.setFontSize(8.5);
     doc.setTextColor(100, 116, 139);
     const dataEmissao = new Date().toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-    doc.text(
-      `Filtro: ${filterLabel}   ·   ${filteredAtivos.length} itens   ·   Emitido em ${dataEmissao}`,
-      14, 21
-    );
+
+    if (isToner) {
+      const totalUnidades = filteredAtivos.reduce((acc, a) => acc + (a.quantidade || 1), 0);
+      doc.text(
+        `Filtro: TONER DE IMPRESSORA   ·   ${filteredAtivos.length} modelos   ·   ${totalUnidades} unidades em estoque   ·   Emitido em ${dataEmissao}`,
+        14, 21
+      );
+    } else {
+      doc.text(
+        `Filtro: ${filterLabel}   ·   ${filteredAtivos.length} itens   ·   Emitido em ${dataEmissao}`,
+        14, 21
+      );
+    }
 
     // Linha separadora
     doc.setDrawColor(226, 232, 240);
@@ -1103,25 +1147,45 @@ function App() {
 
     doc.setTextColor(0, 0, 0);
 
-    // Colunas dinâmicas
-    const tableColumn = hasChip
-      ? ['TAG', 'Tipo', 'Nº Chip', 'Equipamento', 'Colaborador', 'Setor', 'Local', 'Status', 'Valor (R$)']
-      : ['TAG', 'Tipo', 'Equipamento', 'Colaborador', 'Setor', 'Local', 'Status', 'Valor (R$)'];
+    let tableColumn, tableRows;
 
-    const tableRows = filteredAtivos.map(a => {
-      const base = [
-        a.tag_patrimonio,
+    if (isToner) {
+      tableColumn = ['Qtd', 'Tipo', 'Marca', 'Modelo', 'Especificações', 'Local', 'Status', 'Valor (R$)'];
+      const totalUnidades = filteredAtivos.reduce((acc, a) => acc + (a.quantidade || 1), 0);
+      tableRows = filteredAtivos.map(a => [
+        a.quantidade || 1,
         a.tipo || '',
-        `${a.marca || ''} ${a.modelo || ''}`.trim(),
-        a.colaborador?.nome || 'Disponível',
-        a.colaborador?.setor || '—',
+        a.marca || '',
+        a.modelo || '',
+        a.especificacoes || '—',
         a.local_fisico || '',
         a.status || '',
         a.valor ? `R$ ${Number(a.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—',
-      ];
-      if (hasChip) base.splice(2, 0, a.tipo === 'CELULAR' ? (a.numero_chip || '—') : '—');
-      return base;
-    });
+      ]);
+      // Linha de total
+      tableRows.push([
+        { content: totalUnidades, styles: { fontStyle: 'bold', textColor: [37, 99, 235] } },
+        { content: 'TOTAL DE UNIDADES', colSpan: 7, styles: { fontStyle: 'bold', textColor: [37, 99, 235], halign: 'left' } },
+      ]);
+    } else {
+      tableColumn = hasChip
+        ? ['TAG', 'Tipo', 'Nº Chip', 'Equipamento', 'Colaborador', 'Setor', 'Local', 'Status', 'Valor (R$)']
+        : ['TAG', 'Tipo', 'Equipamento', 'Colaborador', 'Setor', 'Local', 'Status', 'Valor (R$)'];
+      tableRows = filteredAtivos.map(a => {
+        const base = [
+          a.tag_patrimonio,
+          a.tipo || '',
+          `${a.marca || ''} ${a.modelo || ''}`.trim(),
+          a.colaborador?.nome || 'Disponível',
+          a.colaborador?.setor || '—',
+          a.local_fisico || '',
+          a.status || '',
+          a.valor ? `R$ ${Number(a.valor).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}` : '—',
+        ];
+        if (hasChip) base.splice(2, 0, a.tipo === 'CELULAR' ? (a.numero_chip || '—') : '—');
+        return base;
+      });
+    }
 
     autoTable(doc, {
       head: [tableColumn],
@@ -1142,7 +1206,9 @@ function App() {
         textColor: [30, 41, 59],
       },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: { 0: { fontStyle: 'bold', textColor: [37, 99, 235] } },
+      columnStyles: isToner
+        ? { 0: { fontStyle: 'bold', textColor: [37, 99, 235], halign: 'center' } }
+        : { 0: { fontStyle: 'bold', textColor: [37, 99, 235] } },
       margin: { left: 14, right: 14 },
       didDrawPage: (data) => {
         const total = doc.internal.getNumberOfPages();
@@ -1159,7 +1225,7 @@ function App() {
     });
 
     doc.save(`Inventario_TI_Avanco${filterSuffix}.pdf`);
-    showToast(`Exportação PDF concluída — ${filteredAtivos.length} itens exportados!`, "success");
+    showToast(`Exportação PDF concluída — ${filteredAtivos.length} modelos exportados!`, "success");
   };
 
   // Média de valor dos notebooks para destaque visual
