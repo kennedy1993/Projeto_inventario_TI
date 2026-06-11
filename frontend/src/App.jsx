@@ -408,6 +408,7 @@ function App() {
       data_garantia: ativo.data_garantia || '',
       observacao: ativo.observacao || '',
       valor: ativo.valor || '',
+      quantidade: ativo.quantidade || 1,
       colaborador_id: ativo.colaborador_id || ''
     });
     setIsEditModalOpen(true);
@@ -460,6 +461,7 @@ function App() {
       else payload.valor = null;
       if (!payload.data_aquisicao) payload.data_aquisicao = null;
       if (!payload.data_garantia) payload.data_garantia = null;
+      payload.quantidade = payload.tipo === 'TONER' ? parseInt(payload.quantidade) || 1 : 1;
       const camposOpcionais = ['marca', 'modelo', 'especificacoes', 'licenca_windows', 'licenca_office', 'numero_chip', 'numero_serie', 'fornecedor', 'observacao'];
       camposOpcionais.forEach(campo => { if (payload[campo] === '') payload[campo] = null; });
       await axios.put(`${API_BASE_URL}/api/ativos/${editingAsset.id}`, payload);
@@ -3106,11 +3108,28 @@ function App() {
                 <X size={24} style={{cursor: 'pointer'}} onClick={() => setIsEditModalOpen(false)} />
               </div>
               <form onSubmit={handleUpdateAtivo}>
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                  <div className="form-group">
-                    <label>TAG Patrimônio *</label>
-                    <input value={formData.tag_patrimonio} readOnly style={{cursor: 'not-allowed', opacity: 0.6}} />
+                {formData.tipo !== 'TONER' ? (
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                    <div className="form-group">
+                      <label>TAG Patrimônio *</label>
+                      <input value={formData.tag_patrimonio} readOnly style={{cursor: 'not-allowed', opacity: 0.6}} />
+                    </div>
+                    <div className="form-group">
+                      <label>Tipo de Equipamento</label>
+                      <select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})}>
+                        <option value="NOTEBOOK">NOTEBOOK</option>
+                        <option value="MONITOR">MONITOR</option>
+                        <option value="DESKTOP">DESKTOP</option>
+                        <option value="CELULAR">CELULAR</option>
+                        <option value="IMPRESSORA">IMPRESSORA</option>
+                        <option value="TONER">TONER DE IMPRESSORA</option>
+                        <option value="LICENÇA">LICENÇA</option>
+                        <option value="STARLINK">STARLINK</option>
+                        <option value="OUTROS">OUTROS</option>
+                      </select>
+                    </div>
                   </div>
+                ) : (
                   <div className="form-group">
                     <label>Tipo de Equipamento</label>
                     <select value={formData.tipo} onChange={e => setFormData({...formData, tipo: e.target.value})}>
@@ -3125,7 +3144,7 @@ function App() {
                       <option value="OUTROS">OUTROS</option>
                     </select>
                   </div>
-                </div>
+                )}
 
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
@@ -3163,27 +3182,45 @@ function App() {
                   </div>
                 )}
 
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                  <div className="form-group">
-                    <label>Número de Série</label>
-                    <input value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} placeholder="Ex: SN-ABC123456" />
+                {formData.tipo !== 'TONER' && (
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                    <div className="form-group">
+                      <label>Número de Série</label>
+                      <input value={formData.numero_serie} onChange={e => setFormData({...formData, numero_serie: e.target.value})} placeholder="Ex: SN-ABC123456" />
+                    </div>
+                    <div className="form-group">
+                      <label>Fornecedor</label>
+                      <input value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} placeholder="Ex: Dell Brasil Ltda" />
+                    </div>
                   </div>
-                  <div className="form-group">
-                    <label>Fornecedor</label>
-                    <input value={formData.fornecedor} onChange={e => setFormData({...formData, fornecedor: e.target.value})} placeholder="Ex: Dell Brasil Ltda" />
-                  </div>
-                </div>
+                )}
 
-                <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
-                  <div className="form-group">
-                    <label>Data de Aquisição</label>
-                    <input type="date" value={formData.data_aquisicao} onChange={e => setFormData({...formData, data_aquisicao: e.target.value})} />
+                {formData.tipo !== 'TONER' && (
+                  <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
+                    <div className="form-group">
+                      <label>Data de Aquisição</label>
+                      <input type="date" value={formData.data_aquisicao} onChange={e => setFormData({...formData, data_aquisicao: e.target.value})} />
+                    </div>
+                    <div className="form-group">
+                      <label>Garantia Até</label>
+                      <input type="date" value={formData.data_garantia} onChange={e => setFormData({...formData, data_garantia: e.target.value})} />
+                    </div>
                   </div>
+                )}
+
+                {formData.tipo === 'TONER' && (
                   <div className="form-group">
-                    <label>Garantia Até</label>
-                    <input type="date" value={formData.data_garantia} onChange={e => setFormData({...formData, data_garantia: e.target.value})} />
+                    <label>Quantidade *</label>
+                    <input
+                      required
+                      type="number"
+                      min="1"
+                      value={formData.quantidade}
+                      onChange={e => setFormData({...formData, quantidade: e.target.value})}
+                      placeholder="Ex: 10"
+                    />
                   </div>
-                </div>
+                )}
 
                 <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
                   <div className="form-group">
