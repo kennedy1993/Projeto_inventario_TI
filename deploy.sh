@@ -76,11 +76,11 @@ pip install -r backend/requirements.txt
 # --- 6. BUILD DO FRONTEND REACT ---
 echo ""
 echo "[6/8] Instalando dependências e buildando o frontend..."
-cd frontend
+cd web
 npm install
 npm run build
 cd ..
-echo "  Build gerado em frontend/dist/"
+echo "  Build gerado em web/dist/"
 
 # --- 7. CONFIGURAR NGINX ---
 echo ""
@@ -142,7 +142,7 @@ source venv/bin/activate
 pip install -r backend/requirements.txt
 
 echo "Rebuilding frontend..."
-cd frontend && npm install && npm run build && cd ..
+cd web && npm install && npm run build && cd ..
 
 echo "Reiniciando aplicação..."
 pm2 restart inventario-itam

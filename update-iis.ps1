@@ -4,7 +4,7 @@
 # ============================================================
 
 $PROJETO = "c:\Users\KennedyMonteirodeLim\OneDrive - AVANÇO SA\Documentos\GitHub\Projeto_inventario_TI"
-$DIST    = "$PROJETO\frontend\dist"
+$DIST    = "$PROJETO\web\dist"
 $IIS_DIR = "C:\inetpub\inventarioavanco"
 $SITE    = "inventarioavanco"
 $APPCMD  = "$env:SystemRoot\system32\inetsrv\appcmd.exe"

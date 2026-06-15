@@ -11,14 +11,14 @@ Write-Host "`n=== DEPLOY INVENTARIO AVANCO ===" -ForegroundColor Cyan
 
 # 1. Build do frontend
 Write-Host "`n[1/4] Gerando build do frontend..." -ForegroundColor Yellow
-Set-Location "$projeto\frontend"
+Set-Location "$projeto\web"
 npm run build
 if (-not $?) { Write-Host "ERRO no build!" -ForegroundColor Red; exit 1 }
 
 # 2. Copiar build para IIS
 Write-Host "`n[2/4] Copiando arquivos para IIS..." -ForegroundColor Yellow
-Copy-Item -Path "$projeto\frontend\dist\*" -Destination $iisDir -Recurse -Force
-Copy-Item -Path "$projeto\frontend\web.config" -Destination $iisDir -Force
+Copy-Item -Path "$projeto\web\dist\*" -Destination $iisDir -Recurse -Force
+Copy-Item -Path "$projeto\web\web.config" -Destination $iisDir -Force
 Write-Host "Arquivos copiados para $iisDir" -ForegroundColor Green
 
 # 3. Criar pasta de logs se nao existir
