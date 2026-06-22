@@ -1302,101 +1302,176 @@ function App() {
     <div className="app-container">
       {/* Sidebar de Navegação Lateral */}
       <aside className="sidebar">
-        <div className="logo" onClick={() => setActiveTab('dashboard')}>
-          <img src={logoImg} alt="Avanço S.A." style={{ width: '100%', height: 'auto', display: 'block' }} />
+        <div className="sidebar-header">
+          <div className="logo" onClick={() => setActiveTab('dashboard')}>
+            <img src={logoImg} alt="Avanço S.A." style={{ width: '100%', height: 'auto', display: 'block' }} />
+          </div>
         </div>
-        <nav className="nav-links">
-          <div 
-            className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
-          >
-            <LayoutDashboard size={20} />
-            Dashboard
+
+        <div className="nav-section">
+          <div className="nav-section-label">Principal</div>
+          <nav className="nav-links">
+            <div
+              className={`nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => setActiveTab('dashboard')}
+            >
+              <LayoutDashboard size={18} className="nav-icon" />
+              Dashboard
+            </div>
+            <div
+              className={`nav-item ${activeTab === 'ativos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('ativos')}
+            >
+              <Monitor size={18} className="nav-icon" />
+              Equipamentos
+            </div>
+            <div
+              className={`nav-item ${activeTab === 'colaboradores' ? 'active' : ''}`}
+              onClick={() => setActiveTab('colaboradores')}
+            >
+              <Users size={18} className="nav-icon" />
+              Colaboradores
+            </div>
+          </nav>
+
+          <div className="nav-section-label" style={{marginTop: '0.75rem'}}>Operações</div>
+          <nav className="nav-links">
+            <div
+              className={`nav-item ${activeTab === 'aquisicao' ? 'active' : ''}`}
+              onClick={() => setActiveTab('aquisicao')}
+            >
+              <ShoppingCart size={18} className="nav-icon" />
+              Aquisição
+              {solicitacaoStats.em_aberto > 0 && (
+                <span className="nav-badge">{solicitacaoStats.em_aberto}</span>
+              )}
+            </div>
+            <div
+              className={`nav-item ${activeTab === 'contratos' ? 'active' : ''}`}
+              onClick={() => setActiveTab('contratos')}
+            >
+              <ScrollText size={18} className="nav-icon" />
+              Contratos TI
+              {(contratoStats.vencidos + contratoStats.vencendo_30d) > 0 && (
+                <span className="nav-badge">{contratoStats.vencidos + contratoStats.vencendo_30d}</span>
+              )}
+            </div>
+            <div
+              className={`nav-item ${activeTab === 'relatorios' ? 'active' : ''}`}
+              onClick={() => setActiveTab('relatorios')}
+            >
+              <BarChart3 size={18} className="nav-icon" />
+              Relatórios
+            </div>
+          </nav>
+
+          <div className="nav-section-label" style={{marginTop: '0.75rem'}}>Ferramentas</div>
+          <nav className="nav-links">
+            <div
+              className={`nav-item ${activeTab === 'importar' ? 'active' : ''}`}
+              onClick={() => setActiveTab('importar')}
+            >
+              <UploadCloud size={18} className="nav-icon" />
+              Importar Excel
+            </div>
+          </nav>
+        </div>
+
+        <div className="sidebar-footer">
+          <div className="sidebar-user-info">
+            <div className="user-avatar">TI</div>
+            <div>
+              <div className="user-name">Avanço Construções</div>
+              <div className="user-role">Sistema ITAM v2.0</div>
+            </div>
           </div>
-          <div 
-            className={`nav-item ${activeTab === 'ativos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('ativos')}
-          >
-            <Monitor size={20} />
-            Equipamentos
-          </div>
-          <div 
-            className={`nav-item ${activeTab === 'colaboradores' ? 'active' : ''}`}
-            onClick={() => setActiveTab('colaboradores')}
-          >
-            <Users size={20} />
-            Colaboradores
-          </div>
-          <div 
-            className={`nav-item ${activeTab === 'importar' ? 'active' : ''}`}
-            onClick={() => setActiveTab('importar')}
-          >
-            <UploadCloud size={20} />
-            Importar Excel
-          </div>
-          <div
-            className={`nav-item ${activeTab === 'aquisicao' ? 'active' : ''}`}
-            onClick={() => setActiveTab('aquisicao')}
-          >
-            <ShoppingCart size={20} />
-            Aquisição
-          </div>
-          <div
-            className={`nav-item ${activeTab === 'relatorios' ? 'active' : ''}`}
-            onClick={() => setActiveTab('relatorios')}
-          >
-            <BarChart3 size={20} />
-            Relatórios
-          </div>
-          <div
-            className={`nav-item ${activeTab === 'contratos' ? 'active' : ''}`}
-            onClick={() => setActiveTab('contratos')}
-          >
-            <ScrollText size={20} />
-            Contratos TI
-          </div>
-        </nav>
+        </div>
       </aside>
 
       {/* Main Content Area */}
       <main className="main-content">
+        <div className="page-wrapper">
         {activeTab !== 'ativos' && (
-          <header>
-            <h1>
-              {activeTab === 'dashboard' ? 'Dashboard de Inventário' :
-               activeTab === 'colaboradores' ? 'Gestão de Colaboradores' :
-               activeTab === 'importar' ? 'Importação Inteligente Excel' :
-               activeTab === 'contratos' ? 'Contratos de T.I.' :
-               activeTab === 'aquisicao' ? 'Aquisição de Material' : 'Relatórios Estratégicos'}
-            </h1>
-            <p className="subtitle">Bem-vindo ao sistema de controle de ativos de T.I. Avanço Construções.</p>
-          </header>
+          <div className="page-header">
+            <div className="page-title-group">
+              <div className="page-breadcrumb">
+                ITAM <ChevronRight size={12} />
+                <span>
+                  {activeTab === 'dashboard' ? 'Dashboard' :
+                   activeTab === 'colaboradores' ? 'Colaboradores' :
+                   activeTab === 'importar' ? 'Importar Excel' :
+                   activeTab === 'contratos' ? 'Contratos TI' :
+                   activeTab === 'aquisicao' ? 'Aquisição' : 'Relatórios'}
+                </span>
+              </div>
+              <h1>
+                {activeTab === 'dashboard' ? 'Dashboard de Inventário' :
+                 activeTab === 'colaboradores' ? 'Gestão de Colaboradores' :
+                 activeTab === 'importar' ? 'Importação Inteligente' :
+                 activeTab === 'contratos' ? 'Contratos de T.I.' :
+                 activeTab === 'aquisicao' ? 'Aquisição de Material' : 'Relatórios Estratégicos'}
+              </h1>
+              <p className="subtitle">
+                {activeTab === 'dashboard' ? 'Visão geral do inventário de ativos de T.I.' :
+                 activeTab === 'colaboradores' ? 'Gerencie os colaboradores e seus equipamentos.' :
+                 activeTab === 'importar' ? 'Importe planilhas Excel com mapeamento inteligente de colunas.' :
+                 activeTab === 'contratos' ? 'Controle contratos, licenças e renovações de TI.' :
+                 activeTab === 'aquisicao' ? 'Gerencie solicitações de compra e ciclo de aquisição.' :
+                 'Análises e gráficos estratégicos do inventário.'}
+              </p>
+            </div>
+          </div>
         )}
 
         {loading && activeTab !== 'importar' ? (
-          <div style={{display: 'flex', justifyContent: 'center', padding: '5rem', color: 'var(--text-muted)'}}>
-             Carregando informações do servidor...
-          </div>
+          /* Skeleton Loading */
+          <>
+            <div className="stats-grid" style={{marginBottom: '1.5rem'}}>
+              {[1,2,3,4].map(i => (
+                <div key={i} className="skeleton-card">
+                  <div className="skeleton skeleton-line short" />
+                  <div className="skeleton skeleton-line h-8" style={{width: '50%'}} />
+                  <div className="skeleton skeleton-line" style={{width: '30%', height: '8px', marginTop: '0.5rem'}} />
+                </div>
+              ))}
+            </div>
+            <div className="table-container">
+              <div style={{padding: '0.875rem 1rem', borderBottom: '1px solid var(--border)'}}>
+                <div style={{display: 'grid', gridTemplateColumns: '2fr 1fr 1fr 1fr 1fr 1fr', gap: '1rem'}}>
+                  {[1,2,3,4,5,6].map(i => <div key={i} className="skeleton skeleton-line" style={{height: '10px'}} />)}
+                </div>
+              </div>
+              {[1,2,3,4,5,6,7].map(i => (
+                <div key={i} className="skeleton-table-row">
+                  {[1,2,3,4,5,6,7].map(j => <div key={j} className="skeleton skeleton-line" style={{height: '12px'}} />)}
+                </div>
+              ))}
+            </div>
+          </>
         ) : activeTab === 'dashboard' ? (
           <>
             {/* Alertas críticos de garantia */}
             {(stats.garantia_vencida > 0 || stats.garantia_vencendo_30d > 0) && (
-              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap'}}>
+              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap'}}>
                 {stats.garantia_vencida > 0 && (
-                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '10px'}}>
-                    <ShieldOff size={20} color="#ef4444" style={{flexShrink: 0}} />
+                  <div className="alert-banner danger" style={{flex: 1, minWidth: '260px'}}>
+                    <ShieldOff size={18} color="var(--danger)" className="alert-banner-icon" />
                     <div>
-                      <div style={{fontWeight: '700', color: '#ef4444', fontSize: '0.9rem'}}>{stats.garantia_vencida} equipamento{stats.garantia_vencida > 1 ? 's' : ''} com garantia vencida</div>
-                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Verifique os ativos e acione o fornecedor ou planeje substituição.</div>
+                      <div className="alert-banner-title" style={{color: 'var(--danger)'}}>
+                        {stats.garantia_vencida} equipamento{stats.garantia_vencida > 1 ? 's' : ''} com garantia vencida
+                      </div>
+                      <div className="alert-banner-desc">Acione o fornecedor ou planeje a substituição dos ativos.</div>
                     </div>
                   </div>
                 )}
                 {stats.garantia_vencendo_30d > 0 && (
-                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '10px'}}>
-                    <Shield size={20} color="var(--warning)" style={{flexShrink: 0}} />
+                  <div className="alert-banner warning" style={{flex: 1, minWidth: '260px'}}>
+                    <Shield size={18} color="var(--warning)" className="alert-banner-icon" />
                     <div>
-                      <div style={{fontWeight: '700', color: 'var(--warning)', fontSize: '0.9rem'}}>{stats.garantia_vencendo_30d} equipamento{stats.garantia_vencendo_30d > 1 ? 's' : ''} com garantia vencendo em 30 dias</div>
-                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Acione a garantia antes do prazo para evitar custo extra.</div>
+                      <div className="alert-banner-title" style={{color: 'var(--warning)'}}>
+                        {stats.garantia_vencendo_30d} equipamento{stats.garantia_vencendo_30d > 1 ? 's' : ''} com garantia vencendo em 30 dias
+                      </div>
+                      <div className="alert-banner-desc">Acione a garantia antes do prazo para evitar custos extras.</div>
                     </div>
                   </div>
                 )}
@@ -1404,50 +1479,65 @@ function App() {
             )}
 
             {/* KPI Cards Grid — 4 principais */}
-            <div className="stats-grid" style={{marginBottom: '1rem'}}>
+            <div className="stats-grid" style={{marginBottom: '1.25rem'}}>
               <div className="stat-card">
+                <div className="stat-card-accent cyan" />
+                <div className="stat-icon-wrap cyan"><Package size={18} /></div>
                 <div className="stat-label">Total de Ativos</div>
                 <div className="stat-value">{stats.total_ativos}</div>
-                <Package size={24} color="var(--accent)" style={{marginTop: 'auto'}} />
+                <div className="stat-footer"><TrendingUp size={12} /> Inventário completo</div>
               </div>
               <div className="stat-card">
+                <div className="stat-card-accent green" />
+                <div className="stat-icon-wrap green"><CheckCircle2 size={18} /></div>
                 <div className="stat-label">Em Uso</div>
-                <div className="stat-value">{stats.ativos_em_uso}</div>
-                <CheckCircle2 size={24} color="var(--success)" style={{marginTop: 'auto'}} />
+                <div className="stat-value" style={{color: 'var(--success)'}}>{stats.ativos_em_uso}</div>
+                <div className="stat-footer">
+                  {stats.total_ativos > 0 ? Math.round((stats.ativos_em_uso / stats.total_ativos) * 100) : 0}% do total
+                </div>
               </div>
               <div className="stat-card">
+                <div className="stat-card-accent amber" />
+                <div className="stat-icon-wrap amber"><HardDrive size={18} /></div>
                 <div className="stat-label">Em Estoque</div>
-                <div className="stat-value">{stats.ativos_estoque}</div>
-                <HardDrive size={24} color="var(--warning)" style={{marginTop: 'auto'}} />
+                <div className="stat-value" style={{color: 'var(--warning)'}}>{stats.ativos_estoque}</div>
+                <div className="stat-footer">Disponíveis para uso</div>
               </div>
               <div className="stat-card">
+                <div className="stat-card-accent purple" />
+                <div className="stat-icon-wrap purple"><TrendingUp size={18} /></div>
                 <div className="stat-label">Valor Total do Inventário</div>
-                <div className="stat-value" style={{fontSize: '1.1rem'}}>R$ {(stats.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}</div>
-                <TrendingUp size={24} color="#8b5cf6" style={{marginTop: 'auto'}} />
+                <div className="stat-value smaller">
+                  R$ {(stats.valor_total || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </div>
+                <div className="stat-footer">Valor patrimonial</div>
               </div>
             </div>
 
             {/* KPI Cards Grid — operacional */}
-            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.5rem'}}>
+            <div style={{display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '1rem', marginBottom: '1.75rem'}}>
               <div className="stat-card" style={{borderColor: stats.ativos_manutencao > 0 ? 'rgba(239,68,68,0.3)' : undefined}}>
+                <div className="stat-card-accent red" />
+                <div className="stat-icon-wrap red"><Wrench size={16} /></div>
                 <div className="stat-label">Em Manutenção</div>
-                <div className="stat-value" style={{fontSize: '1.5rem', color: stats.ativos_manutencao > 0 ? '#ef4444' : 'var(--text-main)'}}>{stats.ativos_manutencao || 0}</div>
-                <Wrench size={20} color={stats.ativos_manutencao > 0 ? '#ef4444' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+                <div className="stat-value smaller" style={{color: stats.ativos_manutencao > 0 ? 'var(--danger)' : 'var(--text-main)'}}>{stats.ativos_manutencao || 0}</div>
               </div>
               <div className="stat-card">
+                <div className="stat-icon-wrap" style={{background: 'rgba(100,116,139,0.1)', color: 'var(--text-muted)'}}><Trash2 size={16} /></div>
                 <div className="stat-label">Descartados</div>
-                <div className="stat-value" style={{fontSize: '1.5rem', color: 'var(--text-muted)'}}>{stats.ativos_descartados || 0}</div>
-                <Trash2 size={20} color="var(--text-muted)" style={{marginTop: 'auto'}} />
+                <div className="stat-value smaller" style={{color: 'var(--text-muted)'}}>{stats.ativos_descartados || 0}</div>
               </div>
               <div className="stat-card" style={{borderColor: stats.garantia_vencida > 0 ? 'rgba(239,68,68,0.3)' : undefined}}>
+                <div className="stat-card-accent red" />
+                <div className="stat-icon-wrap red"><ShieldOff size={16} /></div>
                 <div className="stat-label">Garantia Vencida</div>
-                <div className="stat-value" style={{fontSize: '1.5rem', color: stats.garantia_vencida > 0 ? '#ef4444' : 'var(--success)'}}>{stats.garantia_vencida || 0}</div>
-                <ShieldOff size={20} color={stats.garantia_vencida > 0 ? '#ef4444' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+                <div className="stat-value smaller" style={{color: stats.garantia_vencida > 0 ? 'var(--danger)' : 'var(--success)'}}>{stats.garantia_vencida || 0}</div>
               </div>
               <div className="stat-card" style={{borderColor: stats.garantia_vencendo_30d > 0 ? 'rgba(245,158,11,0.3)' : undefined}}>
+                <div className="stat-card-accent amber" />
+                <div className="stat-icon-wrap amber"><Shield size={16} /></div>
                 <div className="stat-label">Garantia Vencendo (30d)</div>
-                <div className="stat-value" style={{fontSize: '1.5rem', color: stats.garantia_vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{stats.garantia_vencendo_30d || 0}</div>
-                <Shield size={20} color={stats.garantia_vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+                <div className="stat-value smaller" style={{color: stats.garantia_vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{stats.garantia_vencendo_30d || 0}</div>
               </div>
             </div>
 
@@ -1459,11 +1549,11 @@ function App() {
                   {(stats.valor_por_tipo || []).length > 0 ? (
                     <SafeChart>
                       <BarChart data={stats.valor_por_tipo} margin={{ top: 10, right: 20, left: 40, bottom: 20 }}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                        <XAxis dataKey="tipo" stroke="#94a3b8" tick={{fontSize: 11}} />
-                        <YAxis stroke="#94a3b8" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="tipo" stroke="rgba(148,163,184,0.6)" tick={{fontSize: 11}} />
+                        <YAxis stroke="rgba(148,163,184,0.6)" tickFormatter={(v) => `R$${(v/1000).toFixed(0)}k`} />
                         <Tooltip
-                          contentStyle={{ backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px' }}
+                          contentStyle={{ backgroundColor: '#0f1825', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.4)' }}
                           formatter={(val, name, props) => [
                             `R$ ${Number(val).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
                             `Valor — ${props.payload.quantidade} unid.`
@@ -1777,11 +1867,11 @@ function App() {
                       </td>
                       <td style={{textAlign: 'center'}} onClick={(e) => e.stopPropagation()}>
                         <div style={{display: 'flex', justifyContent: 'center', gap: '0.25rem'}}>
-                          <button className="btn-icon" onClick={() => openEditAsset(ativo)} title="Editar Ativo">
-                            <Edit2 size={15} />
+                          <button className="btn-icon primary" onClick={() => openEditAsset(ativo)} title="Editar Ativo">
+                            <Edit2 size={14} />
                           </button>
-                          <button className="btn-icon" style={{color: '#ef4444'}} onClick={() => handleDeleteAtivo(ativo.id)} title="Excluir Ativo">
-                            <Trash2 size={15} />
+                          <button className="btn-icon danger" onClick={() => handleDeleteAtivo(ativo.id)} title="Excluir Ativo">
+                            <Trash2 size={14} />
                           </button>
                         </div>
                       </td>
@@ -1837,12 +1927,12 @@ function App() {
                           </span>
                         </td>
                         <td style={{textAlign: 'center'}}>
-                          <div style={{display: 'flex', justifyContent: 'center', gap: '0.5rem'}}>
-                            <button className="btn-icon" onClick={() => openEditColab(colab)} title="Editar Colaborador">
-                              <Edit2 size={16} />
+                          <div style={{display: 'flex', justifyContent: 'center', gap: '0.25rem'}}>
+                            <button className="btn-icon primary" onClick={() => openEditColab(colab)} title="Editar Colaborador">
+                              <Edit2 size={14} />
                             </button>
-                            <button className="btn-icon" style={{color: '#ef4444'}} onClick={() => handleDeleteColaborador(colab.id, colab.nome)} title="Excluir Colaborador">
-                              <Trash2 size={16} />
+                            <button className="btn-icon danger" onClick={() => handleDeleteColaborador(colab.id, colab.nome)} title="Excluir Colaborador">
+                              <Trash2 size={14} />
                             </button>
                           </div>
                         </td>
@@ -2039,22 +2129,26 @@ function App() {
           <>
             {/* Alertas críticos de contratos */}
             {(contratoStats.vencidos > 0 || contratoStats.vencendo_30d > 0) && (
-              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap'}}>
+              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.5rem', flexWrap: 'wrap'}}>
                 {contratoStats.vencidos > 0 && (
-                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.35)', borderRadius: '10px'}}>
-                    <CalendarX2 size={20} color="#ef4444" style={{flexShrink: 0}} />
+                  <div className="alert-banner danger" style={{flex: 1, minWidth: '260px'}}>
+                    <CalendarX2 size={18} color="var(--danger)" className="alert-banner-icon" />
                     <div>
-                      <div style={{fontWeight: '700', color: '#ef4444', fontSize: '0.9rem'}}>{contratoStats.vencidos} contrato{contratoStats.vencidos > 1 ? 's' : ''} vencido{contratoStats.vencidos > 1 ? 's' : ''}</div>
-                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Acione o fornecedor ou inicie o processo de renovação/substituição.</div>
+                      <div className="alert-banner-title" style={{color: 'var(--danger)'}}>
+                        {contratoStats.vencidos} contrato{contratoStats.vencidos > 1 ? 's' : ''} vencido{contratoStats.vencidos > 1 ? 's' : ''}
+                      </div>
+                      <div className="alert-banner-desc">Acione o fornecedor ou inicie o processo de renovação/substituição.</div>
                     </div>
                   </div>
                 )}
                 {contratoStats.vencendo_30d > 0 && (
-                  <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '10px'}}>
-                    <AlertTriangle size={20} color="var(--warning)" style={{flexShrink: 0}} />
+                  <div className="alert-banner warning" style={{flex: 1, minWidth: '260px'}}>
+                    <AlertTriangle size={18} color="var(--warning)" className="alert-banner-icon" />
                     <div>
-                      <div style={{fontWeight: '700', color: 'var(--warning)', fontSize: '0.9rem'}}>{contratoStats.vencendo_30d} contrato{contratoStats.vencendo_30d > 1 ? 's' : ''} vencendo em 30 dias</div>
-                      <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Negocie a renovação antecipadamente para evitar interrupção de serviços.</div>
+                      <div className="alert-banner-title" style={{color: 'var(--warning)'}}>
+                        {contratoStats.vencendo_30d} contrato{contratoStats.vencendo_30d > 1 ? 's' : ''} vencendo em 30 dias
+                      </div>
+                      <div className="alert-banner-desc">Negocie a renovação antecipadamente para evitar interrupção.</div>
                     </div>
                   </div>
                 )}
@@ -2062,26 +2156,34 @@ function App() {
             )}
 
             {/* KPI Cards */}
-            <div className="stats-grid" style={{marginBottom: '1rem'}}>
+            <div className="stats-grid" style={{marginBottom: '1.25rem'}}>
               <div className="stat-card">
+                <div className="stat-card-accent cyan" />
+                <div className="stat-icon-wrap cyan"><ScrollText size={18} /></div>
                 <div className="stat-label">Total de Contratos</div>
                 <div className="stat-value">{contratoStats.total}</div>
-                <ScrollText size={24} color="var(--accent)" style={{marginTop: 'auto'}} />
+                <div className="stat-footer">Todos os contratos</div>
               </div>
               <div className="stat-card">
+                <div className="stat-card-accent green" />
+                <div className="stat-icon-wrap green"><BadgeCheck size={18} /></div>
                 <div className="stat-label">Contratos Ativos</div>
-                <div className="stat-value" style={{color: '#22c55e'}}>{contratoStats.ativos}</div>
-                <BadgeCheck size={24} color="#22c55e" style={{marginTop: 'auto'}} />
+                <div className="stat-value" style={{color: 'var(--success)'}}>{contratoStats.ativos}</div>
+                <div className="stat-footer">Em vigor</div>
               </div>
               <div className="stat-card" style={{borderColor: contratoStats.vencendo_30d > 0 ? 'rgba(245,158,11,0.35)' : undefined}}>
+                <div className="stat-card-accent amber" />
+                <div className="stat-icon-wrap amber"><AlertTriangle size={18} /></div>
                 <div className="stat-label">Vencendo em 30 dias</div>
                 <div className="stat-value" style={{color: contratoStats.vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{contratoStats.vencendo_30d}</div>
-                <AlertTriangle size={24} color={contratoStats.vencendo_30d > 0 ? 'var(--warning)' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+                <div className="stat-footer">Atenção necessária</div>
               </div>
               <div className="stat-card" style={{borderColor: contratoStats.vencidos > 0 ? 'rgba(239,68,68,0.35)' : undefined}}>
+                <div className="stat-card-accent red" />
+                <div className="stat-icon-wrap red"><CalendarX2 size={18} /></div>
                 <div className="stat-label">Contratos Vencidos</div>
-                <div className="stat-value" style={{color: contratoStats.vencidos > 0 ? '#ef4444' : 'var(--text-muted)'}}>{contratoStats.vencidos}</div>
-                <CalendarX2 size={24} color={contratoStats.vencidos > 0 ? '#ef4444' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+                <div className="stat-value" style={{color: contratoStats.vencidos > 0 ? 'var(--danger)' : 'var(--text-muted)'}}>{contratoStats.vencidos}</div>
+                <div className="stat-footer">Requerem ação</div>
               </div>
             </div>
 
@@ -2146,10 +2248,13 @@ function App() {
 
             {/* Tabela de contratos */}
             {filteredContratos.length === 0 ? (
-              <div style={{textAlign: 'center', padding: '4rem', color: 'var(--text-muted)', border: '1px dashed var(--border)', borderRadius: '12px'}}>
-                <ScrollText size={48} color="var(--border)" style={{marginBottom: '1rem'}} />
-                <div style={{fontSize: '1rem', fontWeight: '600'}}>Nenhum contrato encontrado</div>
-                <div style={{fontSize: '0.85rem', marginTop: '0.5rem'}}>Cadastre o primeiro contrato de TI usando o botão "Novo Contrato".</div>
+              <div className="empty-state">
+                <div className="empty-state-icon"><ScrollText size={28} /></div>
+                <h3>Nenhum contrato encontrado</h3>
+                <p>Cadastre o primeiro contrato de TI usando o botão "Novo Contrato".</p>
+                <button className="btn-primary gradient-btn" style={{marginTop: '0.5rem'}} onClick={() => { setContratoFormData(contratoFormDefault); setIsContratoModalOpen(true); }}>
+                  <Plus size={16} /> Novo Contrato
+                </button>
               </div>
             ) : (
               <div className="table-container">
@@ -2285,38 +2390,50 @@ function App() {
           <>
             {/* Alertas críticos */}
             {solicitacaoStats.em_aberto > 0 && (
-              <div style={{display: 'flex', gap: '0.75rem', marginBottom: '1.25rem', flexWrap: 'wrap'}}>
-                <div style={{flex: 1, minWidth: '260px', display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.85rem 1.1rem', backgroundColor: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.35)', borderRadius: '10px'}}>
-                  <AlertTriangle size={20} color="var(--warning)" style={{flexShrink: 0}} />
+              <div style={{marginBottom: '1.5rem'}}>
+                <div className="alert-banner warning">
+                  <AlertTriangle size={18} color="var(--warning)" className="alert-banner-icon" />
                   <div>
-                    <div style={{fontWeight: '700', color: 'var(--warning)', fontSize: '0.9rem'}}>{solicitacaoStats.em_aberto} solicitação{solicitacaoStats.em_aberto > 1 ? 'ões' : ''} em andamento</div>
-                    <div style={{fontSize: '0.75rem', color: 'var(--text-muted)'}}>Valor comprometido: R$ {(solicitacaoStats.valor_comprometido || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+                    <div className="alert-banner-title" style={{color: 'var(--warning)'}}>
+                      {solicitacaoStats.em_aberto} solicitação{solicitacaoStats.em_aberto > 1 ? 'ões' : ''} em andamento
+                    </div>
+                    <div className="alert-banner-desc">
+                      Valor comprometido: R$ {(solicitacaoStats.valor_comprometido || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}
+                    </div>
                   </div>
                 </div>
               </div>
             )}
 
             {/* KPI Cards */}
-            <div className="stats-grid" style={{marginBottom: '1rem'}}>
+            <div className="stats-grid" style={{marginBottom: '1.25rem'}}>
               <div className="stat-card">
+                <div className="stat-card-accent cyan" />
+                <div className="stat-icon-wrap cyan"><ClipboardList size={18} /></div>
                 <div className="stat-label">Total de Solicitações</div>
                 <div className="stat-value">{solicitacaoStats.total}</div>
-                <ClipboardList size={24} color="var(--accent)" style={{marginTop: 'auto'}} />
+                <div className="stat-footer">Todas as requisições</div>
               </div>
               <div className="stat-card" style={{borderColor: solicitacaoStats.em_aberto > 0 ? 'rgba(245,158,11,0.3)' : undefined}}>
+                <div className="stat-card-accent amber" />
+                <div className="stat-icon-wrap amber"><ListChecks size={18} /></div>
                 <div className="stat-label">Em Aberto</div>
                 <div className="stat-value" style={{color: solicitacaoStats.em_aberto > 0 ? 'var(--warning)' : 'var(--text-main)'}}>{solicitacaoStats.em_aberto}</div>
-                <ListChecks size={24} color={solicitacaoStats.em_aberto > 0 ? 'var(--warning)' : 'var(--text-muted)'} style={{marginTop: 'auto'}} />
+                <div className="stat-footer">Aguardando processamento</div>
               </div>
               <div className="stat-card">
+                <div className="stat-card-accent green" />
+                <div className="stat-icon-wrap green"><PackageCheck size={18} /></div>
                 <div className="stat-label">Recebidas</div>
                 <div className="stat-value" style={{color: 'var(--success)'}}>{solicitacaoStats.recebidos}</div>
-                <PackageCheck size={24} color="var(--success)" style={{marginTop: 'auto'}} />
+                <div className="stat-footer">Concluídas com sucesso</div>
               </div>
               <div className="stat-card">
+                <div className="stat-card-accent purple" />
+                <div className="stat-icon-wrap purple"><TrendingDown size={18} /></div>
                 <div className="stat-label">Valor Total Gasto</div>
-                <div className="stat-value" style={{fontSize: '1.1rem'}}>R$ {(solicitacaoStats.valor_gasto_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
-                <TrendingDown size={24} color="#8b5cf6" style={{marginTop: 'auto'}} />
+                <div className="stat-value smaller">R$ {(solicitacaoStats.valor_gasto_total || 0).toLocaleString('pt-BR', {minimumFractionDigits: 2})}</div>
+                <div className="stat-footer">Materiais recebidos</div>
               </div>
             </div>
 
@@ -2328,9 +2445,9 @@ function App() {
                   {(solicitacaoStats.gastos_por_categoria || []).length > 0 ? (
                     <SafeChart>
                       <BarChart data={solicitacaoStats.gastos_por_categoria} margin={{top: 10, right: 20, left: 40, bottom: 20}}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                        <XAxis dataKey="categoria" stroke="#94a3b8" tick={{fontSize: 11}} />
-                        <YAxis stroke="#94a3b8" tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis dataKey="categoria" stroke="rgba(148,163,184,0.6)" tick={{fontSize: 11}} />
+                        <YAxis stroke="rgba(148,163,184,0.6)" tickFormatter={v => `R$${(v/1000).toFixed(0)}k`} />
                         <Tooltip contentStyle={{backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px'}} formatter={v => `R$ ${v.toLocaleString('pt-BR', {minimumFractionDigits: 2})}`} />
                         <Bar dataKey="valor" fill="#8b5cf6" radius={[4,4,0,0]} />
                       </BarChart>
@@ -2348,9 +2465,9 @@ function App() {
                   {solicitacaoStats.total > 0 ? (
                     <SafeChart>
                       <BarChart data={(solicitacaoStats.funil_status || []).filter(f => f.quantidade > 0)} layout="vertical" margin={{top: 5, right: 30, left: 100, bottom: 5}}>
-                        <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                        <XAxis type="number" stroke="#94a3b8" allowDecimals={false} />
-                        <YAxis type="category" dataKey="status" stroke="#94a3b8" tick={{fontSize: 11}} width={95} />
+                        <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                        <XAxis type="number" stroke="rgba(148,163,184,0.6)" allowDecimals={false} />
+                        <YAxis type="category" dataKey="status" stroke="rgba(148,163,184,0.6)" tick={{fontSize: 11}} width={95} />
                         <Tooltip contentStyle={{backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px'}} />
                         <Bar dataKey="quantidade" fill="var(--accent)" radius={[0,4,4,0]} />
                       </BarChart>
@@ -2365,26 +2482,37 @@ function App() {
             </div>
 
             {/* Filtros e Ações */}
-            <div style={{display:'flex', gap:'0.75rem', flexWrap:'wrap', alignItems:'center', marginBottom:'1rem'}}>
-              <div style={{position:'relative', flex:'1', minWidth:'200px'}}>
-                <Search size={16} style={{position:'absolute', left:'0.75rem', top:'50%', transform:'translateY(-50%)', color:'var(--text-muted)'}} />
-                <input style={{paddingLeft:'2.2rem', width:'100%'}} placeholder="Buscar por título, nº, solicitante..." value={filterSolicitacaoText} onChange={e => setFilterSolicitacaoText(e.target.value)} />
+            <div className="filter-bar" style={{marginBottom: '1rem'}}>
+              <div className="search-box">
+                <Search size={16} />
+                <input placeholder="Buscar por título, nº, solicitante..." value={filterSolicitacaoText} onChange={e => setFilterSolicitacaoText(e.target.value)} />
               </div>
-              <select value={filterSolicitacaoStatus} onChange={e => setFilterSolicitacaoStatus(e.target.value)} style={{minWidth:'160px'}}>
-                <option value="Todos">Todos os Status</option>
-                {SOLICITACAO_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <select value={filterSolicitacaoPrioridade} onChange={e => setFilterSolicitacaoPrioridade(e.target.value)} style={{minWidth:'140px'}}>
-                <option value="Todos">Todas Prioridades</option>
-                {SOLICITACAO_PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
-              </select>
-              <select value={filterSolicitacaoCategoria} onChange={e => setFilterSolicitacaoCategoria(e.target.value)} style={{minWidth:'150px'}}>
-                <option value="Todos">Todas Categorias</option>
-                {SOLICITACAO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-              <button className="btn-secondary" onClick={exportSolicitacoesToExcel} title="Exportar Excel">
-                <FileSpreadsheet size={16} /> Excel
-              </button>
+              <div className="filter-select">
+                <Filter size={14} />
+                <select value={filterSolicitacaoStatus} onChange={e => setFilterSolicitacaoStatus(e.target.value)}>
+                  <option value="Todos">Todos os Status</option>
+                  {SOLICITACAO_STATUS_LIST.map(s => <option key={s} value={s}>{s}</option>)}
+                </select>
+              </div>
+              <div className="filter-select">
+                <Tag size={14} />
+                <select value={filterSolicitacaoPrioridade} onChange={e => setFilterSolicitacaoPrioridade(e.target.value)}>
+                  <option value="Todos">Todas Prioridades</option>
+                  {SOLICITACAO_PRIORIDADES.map(p => <option key={p} value={p}>{p}</option>)}
+                </select>
+              </div>
+              <div className="filter-select">
+                <Box size={14} />
+                <select value={filterSolicitacaoCategoria} onChange={e => setFilterSolicitacaoCategoria(e.target.value)}>
+                  <option value="Todos">Todas Categorias</option>
+                  {SOLICITACAO_CATEGORIAS.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div className="export-buttons">
+                <button className="btn-secondary" onClick={exportSolicitacoesToExcel} title="Exportar Excel">
+                  <FileSpreadsheet size={16} />
+                </button>
+              </div>
               <button className="btn-primary gradient-btn" onClick={openCreateSolicitacao}>
                 <PackagePlus size={16} /> Nova Solicitação
               </button>
@@ -2403,10 +2531,13 @@ function App() {
 
             {/* Tabela */}
             {filteredSolicitacoes.length === 0 ? (
-              <div style={{textAlign:'center', padding:'4rem', color:'var(--text-muted)', border:'1px dashed var(--border)', borderRadius:'12px'}}>
-                <ShoppingCart size={40} style={{opacity:0.3, marginBottom:'0.75rem'}} />
-                <div style={{fontWeight:'600', marginBottom:'0.25rem'}}>Nenhuma solicitação encontrada</div>
-                <div style={{fontSize:'0.85rem'}}>Clique em "Nova Solicitação" para registrar uma requisição de material.</div>
+              <div className="empty-state">
+                <div className="empty-state-icon"><ShoppingCart size={28} /></div>
+                <h3>Nenhuma solicitação encontrada</h3>
+                <p>Clique em "Nova Solicitação" para registrar uma requisição de material.</p>
+                <button className="btn-primary gradient-btn" style={{marginTop: '0.5rem'}} onClick={openCreateSolicitacao}>
+                  <PackagePlus size={16} /> Nova Solicitação
+                </button>
               </div>
             ) : (
               <div className="table-container">
@@ -2515,11 +2646,11 @@ function App() {
                 {reportValueBySector.length > 0 ? (
                   <SafeChart>
                     <BarChart data={reportValueBySector} margin={{ top: 20, right: 30, left: 40, bottom: 60 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
-                      <XAxis dataKey="setor" stroke="#94a3b8" angle={-45} textAnchor="end" height={80} />
-                      <YAxis stroke="#94a3b8" tickFormatter={(val) => `R$ ${val}`} />
+                      <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
+                      <XAxis dataKey="setor" stroke="rgba(148,163,184,0.6)" angle={-45} textAnchor="end" height={80} />
+                      <YAxis stroke="rgba(148,163,184,0.6)" tickFormatter={(val) => `R$ ${val}`} />
                       <Tooltip 
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px' }}
+                        contentStyle={{ backgroundColor: '#0f1825', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.4)' }}
                         formatter={(val) => `R$ ${val.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`}
                       />
                       <Bar dataKey="valor" fill="var(--accent)" radius={[4, 4, 0, 0]} />
@@ -2583,7 +2714,7 @@ function App() {
                         })}
                       </Pie>
                       <Tooltip
-                        contentStyle={{ backgroundColor: '#1e293b', border: '1px solid var(--border)', borderRadius: '8px' }}
+                        contentStyle={{ backgroundColor: '#0f1825', border: '1px solid rgba(255,255,255,0.08)', borderRadius: '10px', boxShadow: '0 10px 25px rgba(0,0,0,0.4)' }}
                         formatter={(val, name) => [`${val} equipamento${val !== 1 ? 's' : ''}`, name]}
                       />
                       <Legend />
@@ -2603,10 +2734,16 @@ function App() {
         {isModalOpen && (
           <div className="modal-overlay" onClick={() => setIsModalOpen(false)}>
             <div className="modal" onClick={e => e.stopPropagation()}>
-              <div style={{display: 'flex', justifyContent: 'space-between', marginBottom: '1.5rem'}}>
-                <h2>Cadastrar Novo Ativo</h2>
-                <X size={24} style={{cursor: 'pointer'}} onClick={() => setIsModalOpen(false)} />
+              <div className="modal-header">
+                <div className="modal-title">
+                  <div className="modal-title-icon"><Monitor size={16} /></div>
+                  Cadastrar Novo Ativo
+                </div>
+                <button className="btn-icon" onClick={() => setIsModalOpen(false)}>
+                  <X size={18} />
+                </button>
               </div>
+              <div className="modal-body">
               <form onSubmit={handleCreateAtivo}>
                 {formData.tipo !== 'TONER' ? (
                   <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem'}}>
@@ -2770,10 +2907,14 @@ function App() {
                   <textarea rows="2" value={formData.observacao} onChange={e => setFormData({...formData, observacao: e.target.value})} placeholder="Anotações adicionais sobre o equipamento..." />
                 </div>
 
-                <button type="submit" className="btn-primary gradient-btn" style={{width: '100%', justifyContent: 'center', marginTop: '1rem'}}>
-                  Salvar Equipamento
-                </button>
+                <div className="modal-footer" style={{marginTop: '1.5rem', padding: '1.25rem 0 0', border: 'none', background: 'none', justifyContent: 'stretch'}}>
+                  <button type="button" className="btn-secondary" style={{flex: 1}} onClick={() => setIsModalOpen(false)}>Cancelar</button>
+                  <button type="submit" className="btn-primary gradient-btn" style={{flex: 2, justifyContent: 'center'}}>
+                    <CheckCircle2 size={16} /> Salvar Equipamento
+                  </button>
+                </div>
               </form>
+              </div>
             </div>
           </div>
         )}
@@ -3637,15 +3778,19 @@ function App() {
           </>
         )}
 
+        </div>{/* /page-wrapper */}
+
         {/* --- SISTEMA FLUTUANTE DE NOTIFICAÇÕES TOASTS --- */}
         <div className="toast-container">
           {toasts.map(t => (
             <div key={t.id} className={`toast toast-${t.type}`}>
-              {t.type === 'success' && <CheckCircle2 size={18} color="var(--success)" />}
-              {t.type === 'error' && <X size={18} color="#ef4444" />}
-              {t.type === 'warning' && <AlertTriangle size={18} color="var(--warning)" />}
-              {t.type === 'info' && <Info size={18} color="var(--accent)" />}
-              <span>{t.message}</span>
+              <div className="toast-icon-wrap">
+                {t.type === 'success' && <CheckCircle2 size={15} />}
+                {t.type === 'error' && <X size={15} />}
+                {t.type === 'warning' && <AlertTriangle size={15} />}
+                {t.type === 'info' && <Info size={15} />}
+              </div>
+              <span style={{flex: 1, fontSize: '0.85rem'}}>{t.message}</span>
             </div>
           ))}
         </div>
@@ -3663,8 +3808,9 @@ function App() {
           <div className="chat-window">
             <div className="chat-header">
               <div className="chat-header-title">
-                <Sparkles size={18} color="var(--accent)" />
+                <Sparkles size={16} color="var(--accent)" />
                 <span>Assistente IA Avanço</span>
+                <div className="chat-header-dot" />
               </div>
               <button 
                 className="btn-icon"
