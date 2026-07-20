@@ -212,7 +212,7 @@ function App() {
     email_fornecedor: '', data_inicio: '', data_vencimento: '',
     valor_mensal: '', valor_anual: '', valor_total: '',
     status: 'Ativo', descricao: '', observacoes: '',
-    responsavel_interno: '', renovacao_automatica: false, prazo_aviso_dias: 30
+    responsavel_interno: '', renovacao_automatica: false, prazo_aviso_dias: 30, link_anexo: ''
   };
   const [contratoFormData, setContratoFormData] = useState(contratoFormDefault);
 
@@ -563,7 +563,8 @@ function App() {
       observacoes: c.observacoes || '',
       responsavel_interno: c.responsavel_interno || '',
       renovacao_automatica: c.renovacao_automatica || false,
-      prazo_aviso_dias: c.prazo_aviso_dias || 30
+      prazo_aviso_dias: c.prazo_aviso_dias || 30,
+      link_anexo: c.link_anexo || ''
     });
     setIsContratoEditModalOpen(true);
   };
@@ -3218,6 +3219,10 @@ function App() {
                   <textarea rows="2" value={contratoFormData.descricao} onChange={e => setContratoFormData({...contratoFormData, descricao: e.target.value})} placeholder="Descreva o objeto principal deste contrato..." />
                 </div>
                 <div className="form-group">
+                  <label>Link do Anexo (URL)</label>
+                  <input type="url" value={contratoFormData.link_anexo || ''} onChange={e => setContratoFormData({...contratoFormData, link_anexo: e.target.value})} placeholder="Ex: https://drive.google.com/..." />
+                </div>
+                <div className="form-group">
                   <label>Observações</label>
                   <textarea rows="2" value={contratoFormData.observacoes} onChange={e => setContratoFormData({...contratoFormData, observacoes: e.target.value})} placeholder="Notas adicionais, cláusulas importantes, etc..." />
                 </div>
@@ -3333,6 +3338,10 @@ function App() {
                 <div className="form-group">
                   <label>Descrição / Objeto do Contrato</label>
                   <textarea rows="2" value={contratoFormData.descricao} onChange={e => setContratoFormData({...contratoFormData, descricao: e.target.value})} />
+                </div>
+                <div className="form-group">
+                  <label>Link do Anexo (URL)</label>
+                  <input type="url" value={contratoFormData.link_anexo || ''} onChange={e => setContratoFormData({...contratoFormData, link_anexo: e.target.value})} placeholder="Ex: https://drive.google.com/..." />
                 </div>
                 <div className="form-group">
                   <label>Observações</label>

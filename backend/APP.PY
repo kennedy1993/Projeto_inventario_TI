@@ -121,6 +121,7 @@ class Contrato(Base):
     responsavel_interno = Column(String, nullable=True)
     renovacao_automatica = Column(Boolean, default=False)
     prazo_aviso_dias = Column(Integer, default=30)
+    link_anexo = Column(String, nullable=True)
     created_at = Column(DateTime, default=datetime.now)
     updated_at = Column(DateTime, default=datetime.now, onupdate=datetime.now)
 
@@ -165,6 +166,9 @@ with engine.connect() as _conn:
     _conn.execute(_text("ALTER TABLE ativos ADD COLUMN IF NOT EXISTS quantidade INTEGER DEFAULT 1"))
     # Normaliza e-mails vazios para NULL (evita violação de UNIQUE em cadastros sem e-mail)
     _conn.execute(_text("UPDATE colaboradores SET email_corporativo = NULL WHERE email_corporativo = ''"))
+    
+    # Migração contratos
+    _conn.execute(_text("ALTER TABLE contratos ADD COLUMN IF NOT EXISTS link_anexo VARCHAR"))
     _conn.commit()
 
 
@@ -313,6 +317,7 @@ class ContratoCreate(BaseModel):
     responsavel_interno: Optional[str] = None
     renovacao_automatica: Optional[bool] = False
     prazo_aviso_dias: Optional[int] = 30
+    link_anexo: Optional[str] = None
 
 class ContratoUpdate(BaseModel):
     numero_contrato: Optional[str] = None
@@ -333,6 +338,7 @@ class ContratoUpdate(BaseModel):
     responsavel_interno: Optional[str] = None
     renovacao_automatica: Optional[bool] = None
     prazo_aviso_dias: Optional[int] = None
+    link_anexo: Optional[str] = None
 
 
 class SolicitacaoCompraCreate(BaseModel):
@@ -1034,6 +1040,7 @@ def _serializar_contrato(c: Contrato) -> dict:
         "responsavel_interno": c.responsavel_interno,
         "renovacao_automatica": c.renovacao_automatica,
         "prazo_aviso_dias": c.prazo_aviso_dias,
+        "link_anexo": c.link_anexo,
         "created_at": c.created_at.isoformat() if c.created_at else None,
         "updated_at": c.updated_at.isoformat() if c.updated_at else None,
     }
@@ -1142,6 +1149,7 @@ def criar_contrato(contrato: ContratoCreate, db: Session = Depends(get_db)):
         responsavel_interno=contrato.responsavel_interno,
         renovacao_automatica=contrato.renovacao_automatica or False,
         prazo_aviso_dias=contrato.prazo_aviso_dias or 30,
+        link_anexo=contrato.link_anexo,
     )
     db.add(novo)
     db.commit()
