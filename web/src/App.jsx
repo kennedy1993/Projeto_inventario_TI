@@ -493,6 +493,23 @@ function App() {
 
   // --- CRUD CONTRATOS ---
 
+  const handleContratoFileUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    const formData = new FormData();
+    formData.append("file", file);
+    try {
+      showToast("Enviando arquivo...", "info");
+      const res = await axios.post(`${API_BASE_URL}/api/upload`, formData, {
+        headers: { "Content-Type": "multipart/form-data" }
+      });
+      setContratoFormData({ ...contratoFormData, link_anexo: res.data.url });
+      showToast("Arquivo anexado com sucesso!", "success");
+    } catch (error) {
+      showToast("Erro ao anexar arquivo.", "error");
+    }
+  };
+
   const handleCreateContrato = async (e) => {
     e.preventDefault();
     try {
@@ -1392,7 +1409,7 @@ function App() {
       {/* Main Content Area */}
       <main className="main-content">
         <div className="page-wrapper">
-        {activeTab !== 'ativos' && (
+        {activeTab !== 'ativos' && activeTab !== 'colaboradores' && (
           <div className="page-header">
             <div className="page-title-group">
               <div className="page-breadcrumb">
@@ -1884,8 +1901,18 @@ function App() {
           </>
         ) : activeTab === 'colaboradores' ? (
           <>
-            {/* Lista e Filtros de Colaboradores */}
-            <div className="filter-bar" style={{marginBottom: '1.5rem'}}>
+            {/* Cabeçalho Fixo (Sticky) de Colaboradores */}
+            <div className="equipamentos-sticky-top" style={{ marginTop: '-2rem', paddingTop: '2rem', marginBottom: '1.5rem' }}>
+              <div className="page-header" style={{ borderBottom: 'none', paddingBottom: '0.5rem', marginBottom: '1rem' }}>
+                <div className="page-title-group">
+                  <div className="page-breadcrumb">
+                    ITAM <ChevronRight size={12} /> <span>Colaboradores</span>
+                  </div>
+                  <h1 style={{fontSize: '1.75rem', fontWeight: 700, color: 'var(--text-main)', letterSpacing: '-0.02em', lineHeight: 1.2}}>Gestão de Colaboradores</h1>
+                  <p className="subtitle" style={{color: 'var(--text-secondary)', marginTop: '0.25rem', fontSize: '0.875rem'}}>Gerencie os colaboradores e seus equipamentos.</p>
+                </div>
+              </div>
+              <div className="filter-bar" style={{marginBottom: 0}}>
               <div className="search-box">
                 <Search size={18} />
                 <input 
@@ -1899,6 +1926,7 @@ function App() {
               <button className="btn-primary gradient-btn" onClick={openCreateColab}>
                 <Plus size={20} /> Novo Colaborador
               </button>
+            </div>
             </div>
 
             <div className="table-container">
@@ -3219,8 +3247,15 @@ function App() {
                   <textarea rows="2" value={contratoFormData.descricao} onChange={e => setContratoFormData({...contratoFormData, descricao: e.target.value})} placeholder="Descreva o objeto principal deste contrato..." />
                 </div>
                 <div className="form-group">
-                  <label>Link do Anexo (URL)</label>
-                  <input type="url" value={contratoFormData.link_anexo || ''} onChange={e => setContratoFormData({...contratoFormData, link_anexo: e.target.value})} placeholder="Ex: https://drive.google.com/..." />
+                  <label>Anexo do Contrato (PDF, DOCX)</label>
+                  <input type="file" accept=".pdf,.doc,.docx" onChange={handleContratoFileUpload} style={{padding: '0.4rem'}} />
+                  {contratoFormData.link_anexo && (
+                    <div style={{marginTop: '0.5rem', fontSize: '0.85rem'}}>
+                      <a href={`${API_BASE_URL}${contratoFormData.link_anexo}`} target="_blank" rel="noreferrer" style={{color: 'var(--accent)', textDecoration: 'none'}}>
+                        📄 Ver anexo atual
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Observações</label>
@@ -3340,8 +3375,15 @@ function App() {
                   <textarea rows="2" value={contratoFormData.descricao} onChange={e => setContratoFormData({...contratoFormData, descricao: e.target.value})} />
                 </div>
                 <div className="form-group">
-                  <label>Link do Anexo (URL)</label>
-                  <input type="url" value={contratoFormData.link_anexo || ''} onChange={e => setContratoFormData({...contratoFormData, link_anexo: e.target.value})} placeholder="Ex: https://drive.google.com/..." />
+                  <label>Anexo do Contrato (PDF, DOCX)</label>
+                  <input type="file" accept=".pdf,.doc,.docx" onChange={handleContratoFileUpload} style={{padding: '0.4rem'}} />
+                  {contratoFormData.link_anexo && (
+                    <div style={{marginTop: '0.5rem', fontSize: '0.85rem'}}>
+                      <a href={`${API_BASE_URL}${contratoFormData.link_anexo}`} target="_blank" rel="noreferrer" style={{color: 'var(--accent)', textDecoration: 'none'}}>
+                        📄 Ver anexo atual
+                      </a>
+                    </div>
+                  )}
                 </div>
                 <div className="form-group">
                   <label>Observações</label>

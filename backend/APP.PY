@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 # Carrega as variáveis do arquivo .env (garante que a GROQ_API_KEY seja lida)
 load_dotenv()
 
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, File, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy import create_engine, Column, Integer, String, Numeric, ForeignKey, Date, DateTime, or_, Boolean
 from sqlalchemy.orm import declarative_base
@@ -24,6 +24,9 @@ from sqlalchemy.orm import sessionmaker, Session, relationship, joinedload
 from pydantic import BaseModel, ConfigDict, field_validator
 from typing import List, Optional, Any
 from datetime import datetime, date, timedelta
+import shutil
+import uuid
+import os
 
 # --- 1. CONFIGURAÇÃO DO BANCO DE DADOS POSTGRESQL ---
 import os
@@ -1416,6 +1419,23 @@ def relatorio_garantia_status(db: Session = Depends(get_db)):
         {"status": "Vencida", "quantidade": vencida},
         {"status": "Sem Registro", "quantidade": sem_registro},
     ]
+
+
+# --- 9. UPLOAD DE ARQUIVOS ---
+UPLOAD_DIR = os.path.join(os.path.dirname(os.path.abspath(__file__)), "uploads")
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
+from fastapi.staticfiles import StaticFiles as _StaticFiles
+app.mount("/uploads", _StaticFiles(directory=UPLOAD_DIR), name="uploads")
+
+@app.post("/api/upload")
+async def upload_file(file: UploadFile = File(...)):
+    ext = file.filename.split(".")[-1]
+    filename = f"{uuid.uuid4()}.{ext}"
+    file_path = os.path.join(UPLOAD_DIR, filename)
+    with open(file_path, "wb") as buffer:
+        shutil.copyfileobj(file.file, buffer)
+    return {"url": f"/uploads/{filename}"}
 
 
 # --- SERVE FRONTEND REACT (produção) ---
