@@ -59,10 +59,13 @@ import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import logoImg from './assets/logo_avanço.png';
 
+// Em produção (build servido pelo próprio FastAPI), front e API compartilham a mesma origem,
+// então usamos caminho relativo — isso é obrigatório atrás de proxies/túneis que só expõem uma porta (ex: Cloudflare Tunnel).
+// Em desenvolvimento (Vite em :5173/5174/etc.), a API roda separada na porta 8000 do mesmo host.
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL ||
-  (typeof window !== 'undefined' && window.location.hostname !== 'localhost' && window.location.hostname !== '127.0.0.1'
-    ? `${window.location.protocol}//${window.location.hostname}:8000`
-    : 'http://127.0.0.1:8000');
+  (import.meta.env.DEV
+    ? `${typeof window !== 'undefined' ? window.location.protocol : 'http:'}//${typeof window !== 'undefined' ? window.location.hostname : '127.0.0.1'}:8000`
+    : '');
 
 const SafeChart = ({ children }) => {
   const [size, setSize] = useState({ width: 0, height: 0 });

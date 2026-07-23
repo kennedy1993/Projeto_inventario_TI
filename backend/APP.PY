@@ -446,7 +446,7 @@ def get_db():
 
 # --- 5. ROTAS (ENDPOINTS) ---
 
-@app.get("/")
+@app.get("/api/status")
 def read_root():
     return {"mensagem": "API do Sistema ITAM está online!"}
 

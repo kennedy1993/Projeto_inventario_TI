@@ -1,0 +1,51 @@
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: itam_avanco
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - db_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD}@db:5432/itam_avanco?application_name=itam_api
+      GROQ_API_KEY: ${GROQ_API_KEY}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+    volumes:
+      - uploads_data:/app/backend/uploads
+    ports:
+      # Publicado em todas as interfaces para manter o acesso atual pela
+      # rede interna (ex: http://10.1.5.198:8000), igual já funcionava com
+      # o PM2. O acesso de fora da empresa acontece pelo container
+      # cloudflared abaixo, que não depende dessa porta publicada.
+      - "8000:8000"
+
+  cloudflared:
+    image: cloudflare/cloudflared:latest
+    restart: unless-stopped
+    depends_on:
+      - app
+    # Quick Tunnel: gera uma URL pública *.trycloudflare.com nos logs, sem
+    # precisar de domínio/conta Cloudflare. A URL muda a cada restart do
+    # container — veja DOCKER.md para trocar por um tunnel nomeado (fixo)
+    # quando tiverem um domínio.
+    command: tunnel --no-autoupdate --url http://app:8000
+
+volumes:
+  db_data:
+  uploads_data:
